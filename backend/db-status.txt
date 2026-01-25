@@ -1,0 +1,29 @@
+﻿≡ƒöä Connecting to MongoDB...
+Γ£à Connected to MongoDB
+
+≡ƒôè Total users in database: 10
+
+≡ƒæÑ All users:
+   - Alice (user1) - female
+   - Emma (user2) - female
+   - Sophia (user3) - female
+   - Olivia (user4) - female
+   - Ava (user5) - female
+   - Isabella (user6) - female
+   - Mia (user7) - female
+   - Charlotte (user8) - female
+   - Amelia (user9) - female
+   - Harper (user10) - female
+
+≡ƒô¥ Swipes by user1: 0
+
+Γ£¿ Available users for user1: 9
+   - Harper (user10) - female
+   - Emma (user2) - female
+   - Sophia (user3) - female
+   - Olivia (user4) - female
+   - Ava (user5) - female
+   - Isabella (user6) - female
+   - Mia (user7) - female
+   - Charlotte (user8) - female
+   - Amelia (user9) - female

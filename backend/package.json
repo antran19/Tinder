@@ -1,0 +1,39 @@
+{
+  "name": "dating-app-backend",
+  "version": "1.0.0",
+  "description": "Backend cho ứng dụng hẹn hò - Node.js/Express server với Socket.io",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "axios": "^1.13.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^7.5.0",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "fast-check": "^3.23.2",
+    "jest": "^29.6.2",
+    "mongodb-memory-server": "^11.0.1",
+    "nodemon": "^3.0.1",
+    "socket.io-client": "^4.8.3",
+    "supertest": "^6.3.3"
+  },
+  "keywords": [
+    "dating-app",
+    "express",
+    "socket.io",
+    "mongodb",
+    "real-time"
+  ],
+  "author": "Dating App Team",
+  "license": "MIT"
+}
