@@ -6,7 +6,10 @@ import MatchList from './components/MatchList';
 import Navigation from './components/Navigation';
 import MatchNotification from './components/MatchNotification';
 import LoginPage from './components/LoginPage';
+import RegisterPage from './components/RegisterPage'; // Mới
 import EditProfile from './components/EditProfile'; // Mới
+import PremiumPage from './components/PremiumPage'; // Mới
+import WhoLikedYou from './components/WhoLikedYou'; // Mới
 import { SocketProvider } from './context/SocketContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -29,6 +32,7 @@ function App() {
             <Routes>
               {/* Trang Login không cần Navigation bar */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
 
               {/* Các trang cần đăng nhập mới xem được */}
               <Route path="/*" element={
@@ -41,6 +45,8 @@ function App() {
                         <Route path="/swipe" element={<SwipeView />} />
                         <Route path="/matches" element={<MatchList />} />
                         <Route path="/profile" element={<EditProfile />} />
+                        <Route path="/premium" element={<PremiumPage />} />
+                        <Route path="/who-liked" element={<WhoLikedYou />} />
                       </Routes>
                     </main>
                     <MatchNotification />

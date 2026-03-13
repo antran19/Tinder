@@ -49,8 +49,22 @@ const MatchList = () => {
 
       socket.on('new-match', handleNewMatch);
 
+      // Mới: Xử lý khi có người hủy tương hợp
+      const handleMatchRemoved = (data) => {
+        console.log('Match removed:', data.matchId);
+        setMatches(prevMatches => prevMatches.filter(m => (m._id || m.matchId) !== data.matchId));
+        // Nếu đang mở chat đúng cái match này thì đóng lại
+        if (selectedMatch && (selectedMatch._id || selectedMatch.matchId) === data.matchId) {
+          setSelectedMatch(null);
+          alert('Người dùng này đã hủy tương hợp.');
+        }
+      };
+
+      socket.on('match-removed', handleMatchRemoved);
+
       return () => {
         socket.off('new-match', handleNewMatch);
+        socket.off('match-removed', handleMatchRemoved);
       };
     }
   }, [socket, currentUserId]);

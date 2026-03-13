@@ -1,0 +1,127 @@
+.notification-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.2);
+    z-index: 1100;
+}
+
+.notification-panel {
+    position: absolute;
+    top: 70px;
+    right: 20px;
+    width: 350px;
+    max-height: 500px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: fadeInDown 0.3s ease-out;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.notification-header {
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notification-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #999;
+}
+
+.notification-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.notify-item {
+    display: flex;
+    gap: 15px;
+    padding: 15px 20px;
+    border-bottom: 1px solid #f1f1f1;
+    cursor: pointer;
+    transition: background 0.2s;
+    position: relative;
+}
+
+.notify-item:hover {
+    background: #f8f9fa;
+}
+
+.notify-item.unread {
+    background: #f0f4ff;
+}
+
+.notify-icon {
+    font-size: 1.5rem;
+}
+
+.notify-content {
+    flex: 1;
+}
+
+.notify-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 3px;
+    color: #222;
+}
+
+.notify-text {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.notify-time {
+    font-size: 0.75rem;
+    color: #999;
+}
+
+.unread-dot {
+    width: 8px;
+    height: 8px;
+    background: #667eea;
+    border-radius: 50%;
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.no-notify,
+.notify-loading {
+    padding: 30px;
+    text-align: center;
+    color: #888;
+    font-size: 0.9rem;
+}

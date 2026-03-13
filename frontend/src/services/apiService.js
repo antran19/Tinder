@@ -54,24 +54,27 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    const backendMessage = error.response?.data?.message;
     console.error('API Response Error:', error.response?.data || error.message);
 
     // Handle common error scenarios
     if (error.response?.status === 404) {
-      throw new Error('Resource not found');
+      throw new Error(backendMessage || 'Resource not found');
     } else if (error.response?.status === 500) {
-      throw new Error('Server error. Please try again later.');
+      throw new Error(backendMessage || 'Server error. Please try again later.');
     } else if (error.response?.status === 409) {
-      throw new Error(error.response?.data?.message || 'Conflict error');
+      throw new Error(backendMessage || 'Conflict error');
     } else if (error.response?.status === 400) {
-      throw new Error(error.response?.data?.message || 'Invalid request');
+      throw new Error(backendMessage || 'Invalid request');
+    } else if (error.response?.status === 401) {
+      throw new Error(backendMessage || 'Unauthorized');
     } else if (error.code === 'ECONNREFUSED') {
       throw new Error('Cannot connect to server. Please check if the backend is running.');
     } else if (error.code === 'ECONNABORTED') {
       throw new Error('Request timeout. Please try again.');
     }
 
-    throw error;
+    throw new Error(backendMessage || error.message);
   }
 );
 
@@ -116,17 +119,26 @@ const shouldRetry = (error) => {
 };
 
 export const apiService = {
-  /**
-   * Đăng nhập người dùng
-   * @param {string} userId
-   * @returns {Promise<Object>} Thông tin user và token
-   */
-  async login(userId) {
+  async login(userId, password) {
     try {
-      const response = await api.post('/auth/login', { userId });
+      const response = await api.post('/auth/login', { userId, password });
       return response.data;
     } catch (error) {
       console.error('Lỗi API Login:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Đăng ký tài khoản mới
+   * @param {Object} userData 
+   */
+  async register(userData) {
+    try {
+      const response = await api.post('/auth/register', userData);
+      return response.data;
+    } catch (error) {
+      console.error('Lỗi API Register:', error);
       throw error;
     }
   },
@@ -396,7 +408,183 @@ export const apiService = {
         throw new Error('Server health check failed');
       }
     });
+  },
+
+  // === NOTIFICATIONS ===
+  async getNotifications(userId) {
+    try {
+      const response = await api.get(`/notifications/${userId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      return { notifications: [], unreadCount: 0 };
+    }
+  },
+
+  async markNotificationRead(notificationId) {
+    try {
+      await api.put(`/notifications/mark-read/${notificationId}`);
+    } catch (error) {
+      console.error('Error marking notification read:', error);
+    }
+  },
+
+  // === MATCH ACTIONS ===
+  async unmatchUser(matchId, userId, reason = '') {
+    try {
+      const response = await api.post(`/matches/${matchId}/unmatch`, { userId, reason });
+      return response.data;
+    } catch (error) {
+      console.error('Error unmatching:', error);
+      throw error;
+    }
+  },
+
+  // === PREMIUM FEATURES ===
+  async activateBoost(userId) {
+    try {
+      const response = await api.post('/premium/activate-boost', { userId });
+      return response.data;
+    } catch (error) {
+      console.error('Error activating boost:', error);
+      throw error;
+    }
+  },
+
+  async rewindSwipe(swipeId, userId) {
+    try {
+      const response = await api.delete(`/premium/rewind/${swipeId}`, { data: { userId } });
+      return response.data;
+    } catch (error) {
+      console.error('Error rewinding:', error);
+      throw error;
+    }
+  },
+
+  async upgradeToPremium(userId, tier = 'premium') {
+    try {
+      const response = await api.post('/premium/upgrade', { userId, tier });
+      return response.data;
+    } catch (error) {
+      console.error('Error upgrading:', error);
+      throw error;
+    }
+  },
+
+  async getPremiumStatus(userId) {
+    try {
+      const response = await api.get(`/premium/status/${userId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error getting premium status:', error);
+      return null;
+    }
+  },
+
+  // ===== UPLOAD APIs =====
+
+  /**
+   * Upload ảnh trong chat
+   * @param {File} imageFile - File ảnh
+   * @returns {Object} { imageUrl, filename }
+   */
+  async uploadChatImage(imageFile) {
+    try {
+      const formData = new FormData();
+      formData.append('image', imageFile);
+
+      const response = await api.post('/upload/chat-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error uploading chat image:', error);
+      throw new Error('Không thể upload ảnh. Vui lòng thử lại.');
+    }
+  },
+
+  /**
+   * Upload ảnh profile
+   * @param {File} imageFile - File ảnh  
+   * @param {string} userId - User ID
+   * @returns {Object} { imageUrl, filename }
+   */
+  async uploadProfileImage(imageFile, userId) {
+    try {
+      const formData = new FormData();
+      formData.append('image', imageFile);
+      formData.append('userId', userId);
+
+      const response = await api.post('/upload/profile-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      throw new Error('Không thể upload ảnh profile. Vui lòng thử lại.');
+    }
+  },
+
+  /**
+   * Xóa ảnh profile
+   * @param {string} userId
+   * @param {string} imageUrl
+   */
+  async deleteProfileImage(userId, imageUrl) {
+    try {
+      await api.delete('/upload/profile-image', { data: { userId, imageUrl } });
+    } catch (error) {
+      console.error('Error deleting profile image:', error);
+      throw new Error('Không thể xóa ảnh.');
+    }
+  },
+
+  /**
+   * Cập nhật thông tin profile nâng cao (interests, profileDetails)
+   * @param {string} userId
+   * @param {Object} profileData - { interests, profileDetails }
+   */
+  async updateUserProfile(userId, profileData) {
+    try {
+      const response = await api.put(`/users/${userId}`, profileData);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      throw new Error('Không thể cập nhật thông tin.');
+    }
+  },
+
+  // ===== WHO LIKED ME =====
+  async getWhoLikedMe(userId) {
+    try {
+      const response = await api.get(`/premium/who-liked/${userId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error getting who liked:', error);
+      throw error;
+    }
+  },
+
+  // ===== PAYMENT =====
+  async purchasePremium(userId, tier, paymentMethod, amount) {
+    try {
+      const response = await api.post('/premium/purchase', { userId, tier, paymentMethod, amount });
+      return response.data;
+    } catch (error) {
+      console.error('Error purchasing premium:', error);
+      throw error;
+    }
+  },
+
+  async getTransactions(userId) {
+    try {
+      const response = await api.get(`/premium/transactions/${userId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error getting transactions:', error);
+      return { transactions: [], totalSpent: 0 };
+    }
   }
 };
 
-export default apiService;
+export default apiService;

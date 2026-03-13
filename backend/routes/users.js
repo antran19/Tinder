@@ -63,7 +63,7 @@ router.get('/available/:userId', async (req, res) => {
     };
 
     const availableUsers = await User.find(query)
-      .select('userId firstName birthday gender bio images isOnline createdAt');
+      .select('userId firstName birthday gender bio images isOnline createdAt interests profileDetails isVerified');
 
     console.log(`✅ Tìm thấy ${availableUsers.length} users cho ${userId} (Tìm ${genderPref}, Tuổi ${minAge}-${maxAge})`);
 
@@ -96,7 +96,7 @@ router.get('/:userId', async (req, res) => {
     console.log(`🔍 Lấy thông tin user: ${userId}`);
 
     const user = await User.findOne({ userId })
-      .select('userId firstName birthday gender bio images isOnline createdAt preferences');
+      .select('userId firstName birthday gender bio images isOnline createdAt preferences interests profileDetails isVerified');
 
     if (!user) {
       return res.status(404).json({
@@ -238,7 +238,7 @@ router.post('/', async (req, res) => {
 router.put('/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { firstName, bio, birthday, gender, preferences } = req.body;
+    const { firstName, bio, birthday, gender, preferences, interests, profileDetails, images } = req.body;
 
     console.log(`📝 Cập nhật hồ sơ cho user: ${userId}`);
 
@@ -269,15 +269,30 @@ router.put('/:userId', async (req, res) => {
     // 3. Chuẩn bị dữ liệu cập nhật
     const updateData = {
       firstName: firstName || user.firstName,
-      bio: bio || user.bio,
+      bio: bio !== undefined ? bio : user.bio,
       birthday: birthday || user.birthday,
       gender: gender || user.gender
     };
 
+    // Cập nhật interests nếu có
+    if (interests !== undefined) {
+      updateData.interests = interests;
+    }
+
+    // Cập nhật profileDetails nếu có
+    if (profileDetails !== undefined) {
+      updateData.profileDetails = profileDetails;
+    }
+
+    // Cập nhật images nếu có
+    if (images !== undefined) {
+      updateData.images = images;
+    }
+
     // Nếu có gửi preferences lên, cập nhật từng phần để không làm mất các phần khác
     if (preferences) {
       updateData.preferences = {
-        ...user.preferences.toObject(), // Lấy cái cũ
+        ...(user.preferences ? (typeof user.preferences.toObject === 'function' ? user.preferences.toObject() : user.preferences) : {}),
         ...preferences // Ghi đè cái mới gửi lên
       };
 
@@ -294,8 +309,8 @@ router.put('/:userId', async (req, res) => {
     const updatedUser = await User.findOneAndUpdate(
       { userId },
       { $set: updateData },
-      { new: true } // Trả về bản ghi sau khi đã cập nhật
-    ).select('userId firstName birthday gender bio images isOnline preferences');
+      { new: true }
+    ).select('userId firstName birthday gender bio images isOnline preferences interests profileDetails isVerified');
 
     console.log(`✅ Cập nhật hồ sơ thành công cho: ${userId}`);
 

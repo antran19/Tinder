@@ -12,7 +12,7 @@ const swipeSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['like', 'pass'], // like = quẹt phải, pass = quẹt trái
+    enum: ['like', 'pass', 'super_like'], // Thêm super_like
     required: true
   },
   createdAt: {

@@ -13,8 +13,16 @@ const matchSchema = new mongoose.Schema({
   }],
   status: {
     type: String,
-    enum: ['active', 'inactive'], // active = match đang hoạt động, inactive = đã bị hủy
+    enum: ['active', 'inactive', 'unmatched', 'blocked'], // Added unmatched and blocked
     default: 'active'
+  },
+  unmatchedBy: {
+    type: String, // UserId của người thực hiện unmatch
+    default: null
+  },
+  unmatchReason: {
+    type: String,
+    default: null
   },
   createdAt: {
     type: Date,
@@ -27,18 +35,18 @@ const matchSchema = new mongoose.Schema({
 matchSchema.index({ participants: 1 });
 
 // Pre-save middleware để check duplicate matches
-matchSchema.pre('save', async function(next) {
+matchSchema.pre('save', async function (next) {
   if (this.participants.length !== 2) {
     const error = new Error('Match phải có đúng 2 participants');
     return next(error);
   }
-  
+
   // Đảm bảo 2 participants khác nhau
   if (this.participants[0] === this.participants[1]) {
     const error = new Error('Match không thể có cùng một user');
     return next(error);
   }
-  
+
   // Check xem đã có match giữa 2 users này chưa (chỉ khi tạo mới)
   if (this.isNew) {
     const existingMatch = await this.constructor.findOne({
@@ -47,23 +55,23 @@ matchSchema.pre('save', async function(next) {
         { participants: { $all: [this.participants[1], this.participants[0]] } }
       ]
     });
-    
+
     if (existingMatch) {
       const error = new Error('Match giữa 2 users này đã tồn tại');
       return next(error);
     }
   }
-  
+
   next();
 });
 
 // Method để check xem một user có trong match này không
-matchSchema.methods.includesUser = function(userId) {
+matchSchema.methods.includesUser = function (userId) {
   return this.participants.includes(userId);
 };
 
 // Static method để tìm matches của một user
-matchSchema.statics.findByUser = function(userId) {
+matchSchema.statics.findByUser = function (userId) {
   return this.find({
     participants: userId,
     status: 'active'

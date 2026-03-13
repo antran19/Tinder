@@ -1,41 +1,193 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/apiService';
 import './EditProfile.css';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+// Helper: Nếu URL đã là full (http), dùng luôn. Nếu relative, nối với API_BASE_URL
+const getImageUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `${API_BASE_URL}${url}`;
+};
+
+// Danh sách sở thích có sẵn
+const AVAILABLE_INTERESTS = [
+    'Du lịch', 'Âm nhạc', 'Thể thao', 'Nấu ăn', 'Đọc sách', 'Phim ảnh',
+    'Gaming', 'Yoga', 'Nhiếp ảnh', 'Thời trang', 'Công nghệ', 'Nghệ thuật',
+    'Cà phê', 'Thú cưng', 'Gym', 'Nhảy', 'Thiên nhiên', 'Ẩm thực',
+    'Xe cộ', 'Bơi lội', 'Trượt ván', 'Bóng đá', 'Bóng rổ', 'Tennis',
+    'Viết lách', 'Vẽ tranh', 'Piano', 'Guitar', 'Karaoke', 'Board game'
+];
+
+const INTEREST_ICONS = {
+    'Du lịch': '✈️', 'Âm nhạc': '🎵', 'Thể thao': '⚽', 'Nấu ăn': '🍳',
+    'Đọc sách': '📚', 'Phim ảnh': '🎬', 'Gaming': '🎮', 'Yoga': '🧘',
+    'Nhiếp ảnh': '📷', 'Thời trang': '👗', 'Công nghệ': '💻', 'Nghệ thuật': '🎨',
+    'Cà phê': '☕', 'Thú cưng': '🐾', 'Gym': '💪', 'Nhảy': '💃',
+    'Thiên nhiên': '🌿', 'Ẩm thực': '🍜', 'Xe cộ': '🏎️', 'Bơi lội': '🏊',
+    'Trượt ván': '🛹', 'Bóng đá': '⚽', 'Bóng rổ': '🏀', 'Tennis': '🎾',
+    'Viết lách': '✍️', 'Vẽ tranh': '🖼️', 'Piano': '🎹', 'Guitar': '🎸',
+    'Karaoke': '🎤', 'Board game': '🎲'
+};
+
+const ZODIAC_OPTIONS = [
+    { value: '', label: '-- Chọn --' },
+    { value: 'aries', label: '♈ Bạch Dương (21/3 - 19/4)' },
+    { value: 'taurus', label: '♉ Kim Ngưu (20/4 - 20/5)' },
+    { value: 'gemini', label: '♊ Song Tử (21/5 - 20/6)' },
+    { value: 'cancer', label: '♋ Cự Giải (21/6 - 22/7)' },
+    { value: 'leo', label: '♌ Sư Tử (23/7 - 22/8)' },
+    { value: 'virgo', label: '♍ Xử Nữ (23/8 - 22/9)' },
+    { value: 'libra', label: '♎ Thiên Bình (23/9 - 22/10)' },
+    { value: 'scorpio', label: '♏ Bọ Cạp (23/10 - 21/11)' },
+    { value: 'sagittarius', label: '♐ Nhân Mã (22/11 - 21/12)' },
+    { value: 'capricorn', label: '♑ Ma Kết (22/12 - 19/1)' },
+    { value: 'aquarius', label: '♒ Bảo Bình (20/1 - 18/2)' },
+    { value: 'pisces', label: '♓ Song Ngư (19/2 - 20/3)' },
+];
+
+const LOOKING_FOR_OPTIONS = [
+    { value: '', label: '-- Chọn --' },
+    { value: 'relationship', label: '💑 Mối quan hệ nghiêm túc' },
+    { value: 'casual', label: '🤙 Gặp gỡ thoải mái' },
+    { value: 'friendship', label: '🤝 Kết bạn' },
+    { value: 'not-sure', label: '🤔 Chưa chắc chắn' },
+];
+
 /**
- * EditProfile Component
- * Cho phép người dùng chỉnh sửa thông tin cá nhân (Tên, Bio, Ngày sinh, Giới tính)
+ * EditProfile Component - Phiên bản nâng cao
+ * Hỗ trợ: upload ảnh, sở thích, chiều cao, nghề nghiệp, zodiac, v.v.
  */
 const EditProfile = () => {
     const { user, updateUserData } = useAuth();
+    const fileInputRef = useRef(null);
 
-    // Khởi tạo state từ dữ liệu user hiện tại
     const [formData, setFormData] = useState({
-        firstName: user?.firstName || '',
-        bio: user?.bio || '',
-        birthday: user?.birthday ? new Date(user.birthday).toISOString().split('T')[0] : '',
-        gender: user?.gender || 'male',
-        // Mới: Khám phá
-        genderPreference: user?.preferences?.genderPreference || (user?.gender === 'male' ? 'female' : 'male'),
-        minAge: user?.preferences?.ageRange?.min || 18,
-        maxAge: user?.preferences?.ageRange?.max || 50,
+        firstName: '',
+        bio: '',
+        birthday: '',
+        gender: 'male',
+        genderPreference: 'female',
+        minAge: 18,
+        maxAge: 50,
     });
 
+    const [profileDetails, setProfileDetails] = useState({
+        height: '',
+        occupation: '',
+        education: '',
+        location: '',
+        zodiac: '',
+        lookingFor: '',
+    });
+
+    const [selectedInterests, setSelectedInterests] = useState([]);
+    const [profileImages, setProfileImages] = useState([]);
+    const [uploadingImage, setUploadingImage] = useState(false);
     const [status, setStatus] = useState({ type: '', message: '' });
     const [loading, setLoading] = useState(false);
+
+    // Load dữ liệu hiện tại của user
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                firstName: user.firstName || '',
+                bio: user.bio || '',
+                birthday: user.birthday ? new Date(user.birthday).toISOString().split('T')[0] : '',
+                gender: user.gender || 'male',
+                genderPreference: user.preferences?.genderPreference || (user.gender === 'male' ? 'female' : 'male'),
+                minAge: user.preferences?.ageRange?.min || 18,
+                maxAge: user.preferences?.ageRange?.max || 50,
+            });
+            setProfileDetails({
+                height: user.profileDetails?.height || '',
+                occupation: user.profileDetails?.occupation || '',
+                education: user.profileDetails?.education || '',
+                location: user.profileDetails?.location || '',
+                zodiac: user.profileDetails?.zodiac || '',
+                lookingFor: user.profileDetails?.lookingFor || '',
+            });
+            setSelectedInterests(user.interests || []);
+            setProfileImages(user.images || []);
+        }
+    }, [user]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleDetailChange = (e) => {
+        const { name, value } = e.target;
+        setProfileDetails(prev => ({ ...prev, [name]: value }));
+    };
+
+    // Toggle sở thích
+    const toggleInterest = (interest) => {
+        setSelectedInterests(prev => {
+            if (prev.includes(interest)) {
+                return prev.filter(i => i !== interest);
+            }
+            if (prev.length >= 10) {
+                setStatus({ type: 'error', message: 'Tối đa 10 sở thích!' });
+                return prev;
+            }
+            return [...prev, interest];
+        });
+    };
+
+    // Upload ảnh profile
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            setStatus({ type: 'error', message: 'Chỉ chấp nhận file ảnh!' });
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            setStatus({ type: 'error', message: 'Ảnh quá lớn! Tối đa 10MB.' });
+            return;
+        }
+        if (profileImages.length >= 6) {
+            setStatus({ type: 'error', message: 'Tối đa 6 ảnh profile!' });
+            return;
+        }
+
+        try {
+            setUploadingImage(true);
+            const result = await apiService.uploadProfileImage(file, user.userId);
+            setProfileImages(prev => [...prev, result.imageUrl]);
+            setStatus({ type: 'success', message: 'Upload ảnh thành công! 📸' });
+        } catch (error) {
+            setStatus({ type: 'error', message: 'Lỗi upload: ' + error.message });
+        } finally {
+            setUploadingImage(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    // Xóa ảnh profile
+    const handleRemoveImage = async (imageUrl) => {
+        try {
+            await apiService.deleteProfileImage(user.userId, imageUrl);
+            setProfileImages(prev => prev.filter(img => img !== imageUrl));
+            setStatus({ type: 'success', message: 'Đã xóa ảnh.' });
+        } catch (error) {
+            setStatus({ type: 'error', message: 'Lỗi xóa ảnh.' });
+        }
+    };
+
+    // Submit form
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!user) return;
+
         setLoading(true);
         setStatus({ type: '', message: '' });
 
-        // Cấu trúc lại data theo schema backend mong muốn
         const updateBody = {
             firstName: formData.firstName,
             bio: formData.bio,
@@ -47,22 +199,28 @@ const EditProfile = () => {
                     min: parseInt(formData.minAge),
                     max: parseInt(formData.maxAge)
                 }
-            }
+            },
+            interests: selectedInterests,
+            profileDetails: {
+                height: profileDetails.height ? parseInt(profileDetails.height) : null,
+                occupation: profileDetails.occupation,
+                education: profileDetails.education,
+                location: profileDetails.location,
+                zodiac: profileDetails.zodiac,
+                lookingFor: profileDetails.lookingFor,
+            },
+            images: profileImages,
         };
 
         try {
             const response = await apiService.updateProfile(user.userId, updateBody);
-
             if (response.success) {
-                // Cập nhật lại dữ liệu trong Context toàn cục
                 updateUserData(response.data.user);
                 setStatus({ type: 'success', message: 'Hồ sơ đã được cập nhật thành công! ✨' });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         } catch (err) {
-            setStatus({
-                type: 'error',
-                message: err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật hồ sơ.'
-            });
+            setStatus({ type: 'error', message: err.message || 'Có lỗi xảy ra.' });
         } finally {
             setLoading(false);
         }
@@ -71,11 +229,66 @@ const EditProfile = () => {
     return (
         <div className="edit-profile-container">
             <div className="edit-profile-card">
-                <h2>Chỉnh sửa hồ sơ</h2>
-                <p className="subtitle">Cập nhật thông tin bản thân và tiêu chí tìm kiếm</p>
+                <h2>✏️ Chỉnh sửa hồ sơ</h2>
+                <p className="subtitle">Cập nhật thông tin để thu hút người xem hơn!</p>
+
+                {status.message && (
+                    <div className={`status-message ${status.type}`}>
+                        {status.message}
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit}>
+                    {/* ===== SECTION 1: ẢNH PROFILE ===== */}
                     <section className="profile-section">
+                        <h3>📸 Ảnh của bạn <span className="section-badge">{profileImages.length}/6</span></h3>
+                        <p className="section-hint">Thêm ảnh để hồ sơ hấp dẫn hơn. Tối đa 6 ảnh.</p>
+
+                        <div className="photo-grid">
+                            {profileImages.map((img, idx) => (
+                                <div key={idx} className="photo-item">
+                                    <img src={getImageUrl(img)} alt={`Profile ${idx + 1}`} />
+                                    <button
+                                        type="button"
+                                        className="remove-photo-btn"
+                                        onClick={() => handleRemoveImage(img)}
+                                    >
+                                        ✕
+                                    </button>
+                                    {idx === 0 && <span className="primary-badge">Chính</span>}
+                                </div>
+                            ))}
+                            {profileImages.length < 6 && (
+                                <div
+                                    className="photo-item add-photo"
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    {uploadingImage ? (
+                                        <div className="upload-spinner">⏳</div>
+                                    ) : (
+                                        <>
+                                            <span className="add-icon">+</span>
+                                            <span className="add-text">Thêm ảnh</span>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            style={{ display: 'none' }}
+                        />
+                    </section>
+
+                    <div className="section-divider"></div>
+
+                    {/* ===== SECTION 2: THÔNG TIN CƠ BẢN ===== */}
+                    <section className="profile-section">
+                        <h3>👤 Thông tin cơ bản</h3>
+
                         <div className="form-group">
                             <label>Tên hiển thị</label>
                             <input
@@ -99,9 +312,8 @@ const EditProfile = () => {
                                     required
                                 />
                             </div>
-
                             <div className="form-group">
-                                <label>Giới tính của bạn</label>
+                                <label>Giới tính</label>
                                 <select name="gender" value={formData.gender} onChange={handleChange}>
                                     <option value="male">Nam</option>
                                     <option value="female">Nữ</option>
@@ -116,7 +328,7 @@ const EditProfile = () => {
                                 value={formData.bio}
                                 onChange={handleChange}
                                 placeholder="Viết vài dòng giới thiệu về bản thân..."
-                                rows="4"
+                                rows="3"
                             ></textarea>
                             <small className="char-count">{formData.bio.length}/500</small>
                         </div>
@@ -124,8 +336,105 @@ const EditProfile = () => {
 
                     <div className="section-divider"></div>
 
+                    {/* ===== SECTION 3: SỞ THÍCH ===== */}
+                    <section className="profile-section">
+                        <h3>✨ Sở thích <span className="section-badge">{selectedInterests.length}/10</span></h3>
+                        <p className="section-hint">Chọn tối đa 10 sở thích để người khác hiểu bạn hơn.</p>
+
+                        <div className="interests-grid">
+                            {AVAILABLE_INTERESTS.map((interest) => (
+                                <button
+                                    key={interest}
+                                    type="button"
+                                    className={`interest-chip ${selectedInterests.includes(interest) ? 'selected' : ''}`}
+                                    onClick={() => toggleInterest(interest)}
+                                >
+                                    {INTEREST_ICONS[interest] || '✨'} {interest}
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+
+                    <div className="section-divider"></div>
+
+                    {/* ===== SECTION 4: THÔNG TIN CHI TIẾT ===== */}
+                    <section className="profile-section">
+                        <h3>💎 Thông tin chi tiết</h3>
+                        <p className="section-hint">Thêm thông tin để tăng cơ hội được match!</p>
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label>📏 Chiều cao (cm)</label>
+                                <input
+                                    type="number"
+                                    name="height"
+                                    value={profileDetails.height}
+                                    onChange={handleDetailChange}
+                                    placeholder="VD: 170"
+                                    min="100"
+                                    max="250"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>📍 Địa điểm</label>
+                                <input
+                                    type="text"
+                                    name="location"
+                                    value={profileDetails.location}
+                                    onChange={handleDetailChange}
+                                    placeholder="VD: TP.HCM"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label>💼 Nghề nghiệp</label>
+                                <input
+                                    type="text"
+                                    name="occupation"
+                                    value={profileDetails.occupation}
+                                    onChange={handleDetailChange}
+                                    placeholder="VD: Kỹ sư phần mềm"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>🎓 Học vấn</label>
+                                <input
+                                    type="text"
+                                    name="education"
+                                    value={profileDetails.education}
+                                    onChange={handleDetailChange}
+                                    placeholder="VD: ĐH Bách Khoa"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label>🔮 Cung hoàng đạo</label>
+                                <select name="zodiac" value={profileDetails.zodiac} onChange={handleDetailChange}>
+                                    {ZODIAC_OPTIONS.map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>💕 Đang tìm kiếm</label>
+                                <select name="lookingFor" value={profileDetails.lookingFor} onChange={handleDetailChange}>
+                                    {LOOKING_FOR_OPTIONS.map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div className="section-divider"></div>
+
+                    {/* ===== SECTION 5: THIẾT LẬP KHÁM PHÁ ===== */}
                     <section className="discovery-section">
-                        <h3>Thiết lập khám phá 🎯</h3>
+                        <h3>🎯 Thiết lập khám phá</h3>
                         <p className="section-hint">Bạn muốn tìm kiếm người như thế nào?</p>
 
                         <div className="form-group">
@@ -159,14 +468,8 @@ const EditProfile = () => {
                         </div>
                     </section>
 
-                    {status.message && (
-                        <div className={`status-message ${status.type}`}>
-                            {status.message}
-                        </div>
-                    )}
-
                     <button type="submit" className="save-btn" disabled={loading}>
-                        {loading ? 'Đang lưu...' : 'Lưu tất cả thay đổi'}
+                        {loading ? '⏳ Đang lưu...' : '💾 Lưu tất cả thay đổi'}
                     </button>
                 </form>
             </div>

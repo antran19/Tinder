@@ -1,0 +1,310 @@
+/* ===== WHO LIKED YOU - PREMIUM DESIGN ===== */
+.who-liked-page {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.wl-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.wl-header h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary, var(--text-main));
+  margin-bottom: 1rem;
+}
+
+.wl-stats {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.wl-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ===== UPSELL BANNER ===== */
+.wl-upsell-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 1.5rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.12), rgba(118, 75, 162, 0.12));
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  margin-bottom: 2rem;
+}
+
+.upsell-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.upsell-icon {
+  font-size: 2rem;
+}
+
+.upsell-content h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary, var(--text-main));
+  margin: 0;
+}
+
+.upsell-content p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 2px 0 0;
+}
+
+.upsell-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.upsell-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(118, 75, 162, 0.35);
+}
+
+/* ===== GRID CARDS ===== */
+.wl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.wl-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 18px;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+
+.wl-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== CARD IMAGE ===== */
+.wl-card-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: rgba(100, 116, 139, 0.1);
+}
+
+.wl-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: filter 0.3s;
+}
+
+.wl-card-image img.blur-img {
+  filter: blur(20px);
+  transform: scale(1.1);
+}
+
+.wl-card-avatar {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem;
+  font-weight: 800;
+  color: white;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.wl-card-avatar.blur-avatar {
+  filter: blur(15px);
+}
+
+.super-like-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #333;
+  font-size: 0.7rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+}
+
+/* Lock Overlay */
+.wl-lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  gap: 6px;
+}
+
+.lock-icon {
+  font-size: 2rem;
+}
+
+.lock-text {
+  font-size: 0.75rem;
+  color: white;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+/* ===== CARD INFO ===== */
+.wl-card-info {
+  padding: 12px 14px;
+}
+
+.wl-card-info h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, var(--text-main));
+  margin: 0 0 4px;
+}
+
+.wl-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.wl-interests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.wl-interest-tag {
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+}
+
+/* ===== EMPTY STATE ===== */
+.wl-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: var(--card-bg);
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.wl-empty h3 {
+  font-size: 1.3rem;
+  color: var(--text-primary, var(--text-main));
+  margin-bottom: 0.5rem;
+}
+
+.wl-empty p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.wl-cta-btn {
+  padding: 12px 28px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.wl-cta-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(118, 75, 162, 0.35);
+}
+
+/* ===== LOADING ===== */
+.wl-loading {
+  text-align: center;
+  padding: 4rem;
+}
+
+.wl-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--card-border);
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+  .wl-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .wl-upsell-banner {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .upsell-content {
+    flex-direction: column;
+  }
+}

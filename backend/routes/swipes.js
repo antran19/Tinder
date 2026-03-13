@@ -7,7 +7,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { User, Swipe, Match } = require('../models');
+const { User, Swipe, Match, Notification } = require('../models');
 const { emitMatchNotification } = require('../utils/socketUtils');
 
 /**
@@ -25,9 +25,9 @@ const { emitMatchNotification } = require('../utils/socketUtils');
 router.post('/', async (req, res) => {
   try {
     const { fromUserId, toUserId, type } = req.body;
-    
+
     console.log(`💫 Swipe action: ${fromUserId} → ${toUserId} (${type})`);
-    
+
     // Validate input
     if (!fromUserId || !toUserId || !type) {
       return res.status(400).json({
@@ -35,27 +35,53 @@ router.post('/', async (req, res) => {
         message: 'fromUserId, toUserId và type là bắt buộc'
       });
     }
-    
-    if (!['like', 'pass'].includes(type)) {
+
+    if (!['like', 'pass', 'super_like'].includes(type)) {
       return res.status(400).json({
         success: false,
-        message: 'type phải là "like" hoặc "pass"'
+        message: 'type phải là "like", "pass" hoặc "super_like"'
       });
     }
-    
+
     if (fromUserId === toUserId) {
       return res.status(400).json({
         success: false,
         message: 'Không thể swipe chính mình'
       });
     }
-    
+
+    // SUPER LIKE: Kiểm tra credits TRƯỚC KHI kiểm tra existing swipe
+    if (type === 'super_like') {
+      const fromUser = await User.findOne({ userId: fromUserId });
+
+      if (!fromUser) {
+        return res.status(404).json({ success: false, message: 'User không tồn tại' });
+      }
+
+      const isPremium = fromUser.subscription?.tier === 'premium' || fromUser.subscription?.tier === 'gold';
+
+      if (!isPremium && fromUser.credits.superLikes <= 0) {
+        return res.status(403).json({
+          success: false,
+          message: 'Bạn đã hết Super Like. Nâng cấp lên Premium để không giới hạn!',
+          needUpgrade: true
+        });
+      }
+
+      // Trừ credit nếu là Free user
+      if (!isPremium) {
+        fromUser.credits.superLikes -= 1;
+        await fromUser.save();
+        console.log(`💫 User ${fromUserId} used Super Like. Remaining: ${fromUser.credits.superLikes}`);
+      }
+    }
+
     // Check if swipe already exists
     const existingSwipe = await Swipe.findOne({
       fromUserId: fromUserId,
       toUserId: toUserId
     });
-    
+
     if (existingSwipe) {
       return res.status(409).json({
         success: false,
@@ -65,20 +91,20 @@ router.post('/', async (req, res) => {
         }
       });
     }
-    
+
     // Verify both users exist
     const [fromUser, toUser] = await Promise.all([
       User.findOne({ userId: fromUserId }),
       User.findOne({ userId: toUserId })
     ]);
-    
+
     if (!fromUser || !toUser) {
       return res.status(404).json({
         success: false,
         message: 'Một hoặc cả hai user không tồn tại'
       });
     }
-    
+
     // 1. Lưu swipe action
     const swipe = new Swipe({
       fromUserId,
@@ -86,30 +112,30 @@ router.post('/', async (req, res) => {
       type,
       createdAt: new Date()
     });
-    
+
     await swipe.save();
     console.log(`✅ Lưu swipe thành công: ${swipe._id}`);
-    
+
     let matchResult = { match: false };
-    
+
     // 2. Nếu là "like", check mutual like và tạo match
     if (type === 'like') {
       console.log(`💕 Checking mutual like: ${toUserId} → ${fromUserId}`);
-      
+
       const mutualLike = await Swipe.findOne({
         fromUserId: toUserId,
         toUserId: fromUserId,
         type: 'like'
       });
-      
+
       if (mutualLike) {
         console.log(`🎉 Mutual like detected! Creating match...`);
-        
+
         // Check if match already exists (safety check)
         const existingMatch = await Match.findOne({
           participants: { $all: [fromUserId, toUserId] }
         });
-        
+
         if (!existingMatch) {
           // 3. Tạo match mới
           const match = new Match({
@@ -117,20 +143,44 @@ router.post('/', async (req, res) => {
             status: 'active',
             createdAt: new Date()
           });
-          
+
           await match.save();
           console.log(`✅ Match created: ${match._id}`);
-          
+
           matchResult = {
             match: true,
             matchData: match,
             mutualSwipe: mutualLike
           };
-          
+
+          // 4. Tạo Notifications cho cả 2 users
+          const notificationForFromUser = new Notification({
+            recipientId: fromUserId,
+            senderId: toUserId,
+            type: 'new_match',
+            title: 'Tương hợp mới! 🎉',
+            content: `Bạn vừa tương hợp với ${toUserId}`, // Có thể thay bằng tên thật
+            entityId: match._id
+          });
+
+          const notificationForToUser = new Notification({
+            recipientId: toUserId,
+            senderId: fromUserId,
+            type: 'new_match',
+            title: 'Tương hợp mới! 🎉',
+            content: `Bạn vừa tương hợp với ${fromUserId}`,
+            entityId: match._id
+          });
+
+          await Promise.all([
+            notificationForFromUser.save(),
+            notificationForToUser.save()
+          ]);
+
           // Emit real-time match notification cho cả hai users
           console.log(`📢 Emitting match notification to both users...`);
           emitMatchNotification(match);
-          
+
         } else {
           console.log(`⚠️  Match already exists: ${existingMatch._id}`);
           matchResult = {
@@ -144,7 +194,7 @@ router.post('/', async (req, res) => {
         console.log(`💔 No mutual like yet`);
       }
     }
-    
+
     // Trả về kết quả
     res.status(201).json({
       success: true,
@@ -154,10 +204,10 @@ router.post('/', async (req, res) => {
         ...matchResult
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Lỗi tạo swipe:', error);
-    
+
     // Handle validation errors
     if (error.name === 'ValidationError') {
       return res.status(400).json({
@@ -166,7 +216,7 @@ router.post('/', async (req, res) => {
         errors: Object.values(error.errors).map(err => err.message)
       });
     }
-    
+
     res.status(500).json({
       success: false,
       message: 'Lỗi server khi tạo swipe',
@@ -183,38 +233,38 @@ router.get('/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const { type, limit = 20, skip = 0 } = req.query;
-    
+
     console.log(`🔍 Lấy lịch sử swipes cho user: ${userId}`);
-    
+
     // Build query
     const query = { fromUserId: userId };
     if (type && ['like', 'pass'].includes(type)) {
       query.type = type;
     }
-    
+
     // Get swipes with user info
     const swipes = await Swipe.find(query)
       .limit(parseInt(limit))
       .skip(parseInt(skip))
       .sort({ createdAt: -1 });
-    
+
     // Get user info for each swiped user
     const swipesWithUserInfo = await Promise.all(
       swipes.map(async (swipe) => {
         const toUser = await User.findOne({ userId: swipe.toUserId })
           .select('userId firstName gender images');
-        
+
         return {
           ...swipe.toObject(),
           toUserInfo: toUser
         };
       })
     );
-    
+
     const total = await Swipe.countDocuments(query);
-    
+
     console.log(`✅ Tìm thấy ${swipes.length}/${total} swipes`);
-    
+
     res.json({
       success: true,
       message: 'Lấy lịch sử swipes thành công',
@@ -232,7 +282,7 @@ router.get('/:userId', async (req, res) => {
         }
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Lỗi lấy lịch sử swipes:', error);
     res.status(500).json({
@@ -250,9 +300,9 @@ router.get('/:userId', async (req, res) => {
 router.get('/stats/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     console.log(`📊 Lấy thống kê swipes cho user: ${userId}`);
-    
+
     const [
       totalSwipes,
       totalLikes,
@@ -266,7 +316,7 @@ router.get('/stats/:userId', async (req, res) => {
       Swipe.countDocuments({ toUserId: userId, type: 'like' }),
       Match.countDocuments({ participants: userId })
     ]);
-    
+
     const stats = {
       sent: {
         total: totalSwipes,
@@ -282,9 +332,9 @@ router.get('/stats/:userId', async (req, res) => {
         matchRate: totalLikes > 0 ? ((mutualLikes / totalLikes) * 100).toFixed(1) : 0
       }
     };
-    
+
     console.log(`✅ Thống kê swipes:`, stats);
-    
+
     res.json({
       success: true,
       message: 'Lấy thống kê swipes thành công',
@@ -293,7 +343,7 @@ router.get('/stats/:userId', async (req, res) => {
         stats: stats
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Lỗi lấy thống kê swipes:', error);
     res.status(500).json({

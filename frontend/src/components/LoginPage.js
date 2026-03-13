@@ -11,6 +11,7 @@ import './LoginPage.css';
 
 const LoginPage = () => {
     const [userId, setUserId] = useState(''); // Lưu những gì người dùng gõ
+    const [password, setPassword] = useState(''); // Mới: Lưu password
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -29,8 +30,8 @@ const LoginPage = () => {
             setLoading(true);
             setError('');
 
-            // 1. Gọi API đăng nhập (chúng ta sẽ tạo hàm login này trong apiService sau)
-            const response = await apiService.login(userId);
+            // 1. Gọi API đăng nhập (giờ đã có password)
+            const response = await apiService.login(userId, password);
 
             if (response.success) {
                 // 2. Nếu thành công, gọi hàm login của AuthContext để lưu dữ liệu
@@ -42,7 +43,7 @@ const LoginPage = () => {
                 setError(response.message || 'Đăng nhập thất bại');
             }
         } catch (err) {
-            setError(err.message || 'Người dùng không tồn tại hoặc lỗi server');
+            setError(err.message || 'Tài khoản không chính xác hoặc lỗi server');
         } finally {
             setLoading(false);
         }
@@ -60,9 +61,20 @@ const LoginPage = () => {
                         <label>Username / ID</label>
                         <input
                             type="text"
-                            placeholder="Ví dụ: user1, user2..."
+                            placeholder="Nhập ID (Ví dụ: user1)"
                             value={userId}
                             onChange={(e) => setUserId(e.target.value)}
+                            disabled={loading}
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Mật khẩu</label>
+                        <input
+                            type="password"
+                            placeholder="Nhập mật khẩu"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
                             disabled={loading}
                         />
                     </div>
@@ -70,12 +82,16 @@ const LoginPage = () => {
                     {error && <div className="login-error">{error}</div>}
 
                     <button type="submit" className="login-btn" disabled={loading}>
-                        {loading ? 'Đang kiểm tra...' : 'Bắt đầu ngay'}
+                        {loading ? 'Đang kiểm tra...' : 'Đăng nhập'}
                     </button>
                 </form>
 
+                <div className="register-link">
+                    Chưa có tài khoản? <span onClick={() => navigate('/register')}>Đăng ký ngay</span>
+                </div>
+
                 <div className="login-hint">
-                    <p>Gợi ý: Thử dùng <strong>user1</strong> đến <strong>user10</strong></p>
+                    <p>Gợi ý test: <strong>user1</strong> (Không cần pass nếu TK cũ)</p>
                 </div>
             </div>
         </div>

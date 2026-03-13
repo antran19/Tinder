@@ -18,14 +18,17 @@ dotenv.config();
 const { connectDB, setupConnectionEvents, getConnectionStatus, ensureCollections } = require('./config/database');
 
 // Import models để đảm bảo chúng được đăng ký với Mongoose
-const { User, Swipe, Match, Message } = require('./models');
+const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const { User, Match, Message, Notification, Swipe } = require('./models');
 
 // Import routes
 const usersRoutes = require('./routes/users');
 const swipesRoutes = require('./routes/swipes');
 const matchesRoutes = require('./routes/matches');
 const authRoutes = require('./routes/auth');
-const messagesRoutes = require('./routes/messages'); // Mới: Thêm route tin nhắn // Mới: Thêm route đăng nhập
+const messagesRoutes = require('./routes/messages');
+const uploadRoutes = require('./routes/upload');
 
 // Import middleware
 const {
@@ -40,13 +43,25 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // Basic middleware
+// Define allowed origins
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  process.env.SOCKET_CORS_ORIGIN
+].filter((origin, index, self) => origin && self.indexOf(origin) === index); // Remove duplicates and undefined
+
+// Basic middleware
 app.use(cors({
-  origin: process.env.SOCKET_CORS_ORIGIN || 'http://localhost:3000',
+  origin: allowedOrigins,
   credentials: true
 }));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve uploaded files as static
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Request logging (chỉ trong development)
 if (process.env.NODE_ENV === 'development') {
@@ -65,7 +80,7 @@ app.use(simpleRateLimit(1000, 15 * 60 * 1000)); // 1000 requests per 15 minutes
  */
 const io = new Server(server, {
   cors: {
-    origin: process.env.SOCKET_CORS_ORIGIN || 'http://localhost:3000',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
   },
@@ -96,41 +111,33 @@ io.on('connection', (socket) => {
    */
   socket.on('join-room', async (userId) => {
     try {
-      console.log(`👤 User ${userId} joining room...`);
+      if (!userId) return;
+      const normalizedUserId = userId.toString().toLowerCase();
+      console.log(`👤 User ${normalizedUserId} joining room...`);
 
-      // Join socket vào room với userId
-      socket.join(userId);
-      socket.userId = userId;
+      socket.join(normalizedUserId);
+      socket.userId = normalizedUserId;
 
-      // Update user online status trong database
+      // Update user online status trong database (Case-insensitive query)
       await User.updateOne(
-        { userId: userId },
+        { userId: { $regex: new RegExp(`^${normalizedUserId}$`, 'i') } },
         { isOnline: true },
-        { upsert: false } // Không tạo user mới nếu không tồn tại
+        { upsert: false }
       );
 
-      console.log(`✅ User ${userId} joined room and marked online`);
+      console.log(`✅ User ${normalizedUserId} joined room and marked online`);
 
-      // Emit confirmation về client
       socket.emit('room-joined', {
         success: true,
-        userId: userId,
-        message: 'Successfully joined room'
+        userId: normalizedUserId
       });
 
-      // Broadcast user online status (optional - có thể dùng cho hiển thị online users)
       socket.broadcast.emit('user-online', {
-        userId: userId,
+        userId: normalizedUserId,
         isOnline: true
       });
-
     } catch (error) {
-      console.error(`❌ Error joining room for user ${userId}:`, error);
-      socket.emit('room-join-error', {
-        success: false,
-        message: 'Failed to join room',
-        error: error.message
-      });
+      console.error(`❌ Error joining room:`, error);
     }
   });
 
@@ -138,9 +145,42 @@ io.on('connection', (socket) => {
    * Event: join-chat
    * Khi user mở cửa sổ chat với một match
    */
-  socket.on('join-chat', (matchId) => {
-    console.log(`💬 User ${socket.userId} joined chat room: ${matchId}`);
-    socket.join(matchId);
+  socket.on('join-chat', async (data) => {
+    try {
+      const { matchId, userId } = typeof data === 'string' ? { matchId: data } : data;
+      const effectiveUserId = (userId || socket.userId)?.toString().toLowerCase();
+      
+      console.log(`💬 User ${effectiveUserId} joining chat room: ${matchId}`);
+      if (!matchId) return;
+
+      socket.join(matchId.toString());
+      
+      // Log room membership
+      const room = io.sockets.adapter.rooms.get(matchId.toString());
+      console.log(`💬 Room ${matchId} now has ${room ? room.size : 0} members`);
+
+      // Gửi trạng thái online của đối phương
+      const match = await Match.findById(matchId);
+      if (match && effectiveUserId) {
+        const otherUserId = match.participants.find(id => id.toString().toLowerCase() !== effectiveUserId);
+        const otherUser = await User.findOne({ userId: { $regex: new RegExp(`^${otherUserId}$`, 'i') } });
+        if (otherUser) {
+          console.log(`📡 Sending status of ${otherUserId} (${otherUser.isOnline}) to ${effectiveUserId}`);
+          socket.emit('user-status', {
+            userId: otherUserId.toString().toLowerCase(),
+            isOnline: otherUser.isOnline
+          });
+          
+          // Đồng thời broadcast cho người kia biết mình vừa vào chat (biến họ thành Online ngay lập tức)
+          socket.to(matchId.toString()).emit('user-online', {
+            userId: effectiveUserId,
+            isOnline: true
+          });
+        }
+      }
+    } catch (error) {
+      console.error('❌ Lỗi join-chat:', error);
+    }
   });
 
   /**
@@ -149,15 +189,18 @@ io.on('connection', (socket) => {
    */
   socket.on('send-message', async (messageData) => {
     try {
-      const { matchId, senderId, content } = messageData;
+      const { matchId, senderId, content, messageType, imageUrl } = messageData;
+      const normalizedSenderId = senderId?.toString().toLowerCase();
 
-      console.log(`✉️ Tin nhắn mới trong ${matchId} từ ${senderId}`);
+      console.log(`✉️ Tin nhắn mới (${messageType || 'text'}) trong ${matchId} từ ${normalizedSenderId}`);
 
       // 1. Lưu tin nhắn vào database
       const newMessage = new Message({
         matchId,
-        senderId,
-        content,
+        senderId: normalizedSenderId,
+        content: content || (messageType === 'image' ? '📷 Hình ảnh' : '🎞️ GIF'),
+        messageType: messageType || 'text',
+        imageUrl: imageUrl || null,
         createdAt: new Date()
       });
       await newMessage.save();
@@ -167,14 +210,19 @@ io.on('connection', (socket) => {
 
       // 3. (Optional) Gửi notification cho người nhận nếu họ không ở trong phòng chat
       // Có thể dùng một event riêng hoặc emit tới userId room
-      const match = await Match.findById(matchId);
+      const match = await Match.findById(targetMatchId);
       if (match) {
-        const receiverId = match.participants.find(id => id !== senderId);
-        io.to(receiverId).emit('message-notification', {
-          matchId,
-          senderId,
-          content: content.substring(0, 50) + (content.length > 50 ? '...' : '')
-        });
+        const normalizedSenderId = senderId?.toString().toLowerCase();
+        const receiverId = match.participants.find(id => id.toString().toLowerCase() !== normalizedSenderId);
+        if (receiverId) {
+          const normalizedReceiverId = receiverId.toString().toLowerCase();
+          console.log(`🔔 Sending message notification to: ${normalizedReceiverId}`);
+          io.to(normalizedReceiverId).emit('message-notification', {
+            matchId: matchId.toString(),
+            senderId: normalizedSenderId,
+            content: content.substring(0, 50) + (content.length > 50 ? '...' : '')
+          });
+        }
       }
 
     } catch (error) {
@@ -184,12 +232,79 @@ io.on('connection', (socket) => {
   });
 
   /**
+   * Event: typing
+   * Hiển thị trạng thái đang soạn tin (Phát tới tất cả mọi người trong phòng)
+   */
+  socket.on('typing', (data) => {
+    const { matchId, senderId } = data;
+    const normalizedSenderId = senderId?.toString().toLowerCase();
+    if (!matchId) return;
+    
+    const room = io.sockets.adapter.rooms.get(matchId.toString());
+    const roomSize = room ? room.size : 0;
+    console.log(`⌨️ User ${normalizedSenderId} is typing in room ${matchId} (${roomSize} members in room)`);
+    
+    // Use socket.to() instead of io.to() - sends to everyone in room EXCEPT sender
+    socket.to(matchId.toString()).emit('display-typing', { 
+      matchId: matchId.toString(), 
+      senderId: normalizedSenderId 
+    });
+  });
+
+  /**
+   * Event: stop-typing
+   * Tắt trạng thái đang soạn tin
+   */
+  socket.on('stop-typing', (data) => {
+    const { matchId, senderId } = data;
+    const normalizedSenderId = senderId?.toString().toLowerCase();
+    if (!matchId) return;
+
+    console.log(`⌨️ User ${normalizedSenderId} stopped typing in ${matchId}`);
+    socket.to(matchId.toString()).emit('hide-typing', { 
+      matchId: matchId.toString(), 
+      senderId: normalizedSenderId 
+    });
+  });
+
+  /**
+   * Event: mark-as-read
+   * Đánh dấu tin nhắn là đã xem và thông báo cho người gửi
+   */
+  socket.on('mark-as-read', async (data) => {
+    try {
+      const { matchId, userId } = data;
+      const normalizedUserId = userId?.toString().toLowerCase();
+      console.log(`📖 User ${normalizedUserId} marking messages in ${matchId} as read`);
+      
+      const targetMatchId = mongoose.Types.ObjectId.isValid(matchId) 
+        ? new mongoose.Types.ObjectId(matchId) 
+        : matchId;
+
+      // Update DB - Mark ALL messages sent by OTHER user as read
+      const result = await Message.updateMany(
+        { matchId: targetMatchId, senderId: { $ne: normalizedUserId }, isRead: false },
+        { $set: { isRead: true } }
+      );
+
+      console.log(`✅ Updated ${result.modifiedCount} messages to read status in DB`);
+
+      // Thông báo cho tất cả mọi người trong phòng chat
+      console.log(`📡 Emitting messages-read-update to room ${matchId}`);
+      io.to(matchId.toString()).emit('messages-read-update', { 
+        matchId: matchId.toString(), 
+        readerId: normalizedUserId,
+        timestamp: new Date()
+      });
+      
+    } catch (error) {
+      console.error('❌ Lỗi đánh dấu đã đọc qua socket:', error);
+    }
+  });
+
+  /**
    * Event: disconnect
-   * 
-   * Khi user ngắt kết nối:
-   * 1. Update user online status thành false
-   * 2. Broadcast user offline status
-   * 3. Log disconnect event
+   * ... existing code ...
    */
   socket.on('disconnect', async (reason) => {
     try {
@@ -199,9 +314,9 @@ io.on('connection', (socket) => {
       if (socket.userId) {
         console.log(`👤 User ${socket.userId} going offline...`);
 
-        // Update user online status trong database
+        // Update user online status trong database (Case-insensitive query)
         await User.updateOne(
-          { userId: socket.userId },
+          { userId: { $regex: new RegExp(`^${socket.userId}$`, 'i') } },
           { isOnline: false }
         );
 
@@ -326,6 +441,9 @@ app.use('/api/messages', messagesRoutes);
 
 // Matches routes - xử lý matches và thống kê
 app.use('/api/matches', matchesRoutes);
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/premium', require('./routes/premium'));
+app.use('/api/upload', uploadRoutes); // Upload images (chat & profile)
 
 console.log('✅ API routes setup completed');
 

@@ -5,12 +5,16 @@ const userSchema = new mongoose.Schema({
   userId: {
     type: String,
     required: true,
-    unique: true // ID đơn giản như "user1", "user2"
+    unique: true
+  },
+  password: {
+    type: String,
+    select: false
   },
   phoneNumber: {
     type: String,
-    unique: true, // Đảm bảo số điện thoại là duy nhất (nếu có)
-    sparse: true // Cho phép null/undefined và không tạo unique constraint cho null values
+    unique: true,
+    sparse: true
   },
   firstName: {
     type: String,
@@ -22,43 +26,131 @@ const userSchema = new mongoose.Schema({
   },
   gender: {
     type: String,
-    enum: ['male', 'female'], // Chỉ cho phép 2 giá trị này
+    enum: ['male', 'female'],
     required: true
   },
   bio: {
     type: String,
-    default: '' // Mô tả bản thân, có thể để trống
+    default: ''
   },
+  // Nhiều ảnh profile (tối đa 6 ảnh giống Tinder)
   images: [{
-    type: String // Mảng chứa URL các hình ảnh
+    type: String
   }],
+  // Sở thích / Interest Tags
+  interests: [{
+    type: String,
+    trim: true
+  }],
+  // Thông tin thêm cho profile nâng cao
+  profileDetails: {
+    height: {
+      type: Number, // cm
+      default: null
+    },
+    occupation: {
+      type: String,
+      default: ''
+    },
+    education: {
+      type: String,
+      default: ''
+    },
+    location: {
+      type: String,
+      default: ''
+    },
+    zodiac: {
+      type: String,
+      enum: ['', 'aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 
+             'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces'],
+      default: ''
+    },
+    lookingFor: {
+      type: String,
+      enum: ['', 'relationship', 'casual', 'friendship', 'not-sure'],
+      default: ''
+    }
+  },
+  // Xác minh tài khoản
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
   preferences: {
     genderPreference: {
       type: String,
       enum: ['male', 'female'],
-      default: function() {
-        // Default preference: opposite gender
+      default: function () {
         return this.gender === 'male' ? 'female' : 'male';
       }
     },
     ageRange: {
       min: {
         type: Number,
-        default: 18 // Tuổi tối thiểu
+        default: 18
       },
       max: {
         type: Number,
-        default: 50 // Tuổi tối đa
+        default: 50
       }
     }
   },
   isOnline: {
     type: Boolean,
-    default: false // Trạng thái online/offline
+    default: false
   },
+  // Subscription & Monetization
+  subscription: {
+    tier: {
+      type: String,
+      enum: ['free', 'premium', 'gold'],
+      default: 'free'
+    },
+    startDate: {
+      type: Date,
+      default: null
+    },
+    endDate: {
+      type: Date,
+      default: null
+    },
+    autoRenew: {
+      type: Boolean,
+      default: false
+    }
+  },
+  credits: {
+    superLikes: {
+      type: Number,
+      default: 5
+    },
+    boosts: {
+      type: Number,
+      default: 0
+    },
+    rewindAvailable: {
+      type: Boolean,
+      default: false
+    }
+  },
+  lastCreditRefresh: {
+    type: Date,
+    default: Date.now
+  },
+  // Lịch sử giao dịch
+  transactions: [{
+    transactionId: String,
+    tier: String,
+    amount: Number,
+    paymentMethod: String,
+    status: { type: String, enum: ['pending', 'completed', 'failed', 'refunded'], default: 'pending' },
+    createdAt: { type: Date, default: Date.now },
+    completedAt: Date
+  }],
   createdAt: {
     type: Date,
-    default: Date.now // Thời gian tạo tài khoản
+    default: Date.now
   }
 });
 

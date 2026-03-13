@@ -1,7 +1,13 @@
 .navigation {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 1rem 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  background: var(--nav-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 0.75rem 0;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--card-border);
 }
 
 .nav-container {
@@ -10,14 +16,18 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 2rem;
+  padding: 0 1.5rem;
 }
 
 .nav-title {
-  color: white;
+  color: #764ba2;
   font-size: 1.8rem;
-  font-weight: bold;
+  font-weight: 800;
   margin: 0;
+  background: linear-gradient(to right, #764ba2, #fd267a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .nav-links {
@@ -26,12 +36,12 @@
 }
 
 .nav-link {
-  color: white;
+  color: var(--text-main);
   text-decoration: none;
   padding: 0.5rem 1rem;
   border-radius: 20px;
   transition: all 0.3s ease;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .nav-link:hover {
@@ -47,22 +57,52 @@
 .nav-user {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
+}
+
+.nav-notify-container {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s;
+}
+
+.nav-notify-container:hover {
+  transform: scale(1.1);
+}
+
+.nav-bell {
+  font-size: 1.4rem;
+}
+
+.nav-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ff4d4d;
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: bold;
+  border: 2px solid white;
 }
 
 .user-name-link {
-  color: white;
+  color: var(--text-main);
   font-weight: 600;
   font-size: 0.95rem;
   text-decoration: none;
   padding: 0.4rem 0.8rem;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--card-border);
   transition: all 0.3s;
 }
 
 .user-name-link:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(118, 75, 162, 0.1);
+  color: #764ba2;
 }
 
 .user-name-link.active {
@@ -71,17 +111,50 @@
 }
 
 .logout-btn {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid white;
-  color: white;
+  background: transparent;
+  border: 1px solid #ff4d4d;
+  color: #ff4d4d;
   padding: 0.4rem 0.8rem;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.85rem;
   transition: all 0.3s;
+  font-weight: 600;
 }
 
 .logout-btn:hover {
-  background: white;
-  color: #764ba2;
+  background: #ff4d4d;
+  color: white;
 }
+
+.premium-link {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%) !important;
+  color: #333 !important;
+  font-weight: bold;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+}
+
+.premium-link:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6) !important;
+}
+
+/* Theme Toggle Button */
+.theme-toggle-btn {
+  background: var(--card-border);
+  border: 1px solid var(--card-border);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.theme-toggle-btn:hover {
+  transform: scale(1.15) rotate(20deg);
+  box-shadow: 0 4px 12px rgba(118, 75, 162, 0.2);
+}
