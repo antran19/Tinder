@@ -72,10 +72,36 @@ const userSchema = new mongoose.Schema({
       default: ''
     }
   },
+  // Vị trí GPS (GeoJSON) cho tính năng tìm người gần bạn
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      default: [0, 0]
+    },
+    lastUpdated: {
+      type: Date,
+      default: null
+    },
+    city: {
+      type: String,
+      default: ''
+    }
+  },
   // Xác minh tài khoản
   isVerified: {
     type: Boolean,
     default: false
+  },
+  // Role cho admin
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
   },
   preferences: {
     genderPreference: {
@@ -94,6 +120,10 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 50
       }
+    },
+    maxDistance: {
+      type: Number,
+      default: 50 // km
     }
   },
   isOnline: {
@@ -148,10 +178,33 @@ const userSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     completedAt: Date
   }],
+  // Report & Block
+  blockedUsers: [{
+    type: String
+  }],
+  isBanned: {
+    type: Boolean,
+    default: false
+  },
+  // Selfie Verification
+  verification: {
+    status: {
+      type: String,
+      enum: ['none', 'pending', 'approved', 'rejected'],
+      default: 'none'
+    },
+    selfieUrl: { type: String, default: '' },
+    submittedAt: { type: Date },
+    reviewedAt: { type: Date },
+    reviewedBy: { type: String }
+  },
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
+
+// GeoSpatial index cho tìm kiếm theo khoảng cách
+userSchema.index({ 'location': '2dsphere' });
 
 module.exports = mongoose.model('User', userSchema);

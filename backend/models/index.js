@@ -11,15 +11,10 @@ const Match = require('./Match');
 const Message = require('./Message');
 const Notification = require('./Notification');
 const Boost = require('./Boost');
+const Story = require('./Story');
 
 /**
  * Export tất cả models để sử dụng trong các file khác
- * 
- * Usage example:
- * const { User, Swipe, Match } = require('./models');
- * hoặc
- * const models = require('./models');
- * const user = new models.User({...});
  */
 module.exports = {
   User,
@@ -27,7 +22,8 @@ module.exports = {
   Match,
   Message,
   Notification,
-  Boost
+  Boost,
+  Story
 };
 
 /**

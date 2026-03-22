@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // Mới
+import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import './MatchNotification.css';
 
-/**
- * MatchNotification Component
- * Displays real-time match notifications
- * Requirements: 3.2, 5.1 - Real-time match notifications
- */
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+const getImageUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `${API_BASE_URL}${url}`;
+};
+
 const MatchNotification = () => {
     const { user } = useAuth();
     const { socket } = useSocket();
@@ -17,6 +20,7 @@ const MatchNotification = () => {
     const [notification, setNotification] = useState(null);
     const [originalMatchData, setOriginalMatchData] = useState(null);
     const [messageToast, setMessageToast] = useState(null);
+    const [showConfetti, setShowConfetti] = useState(false);
 
     const currentUserId = user?.userId;
 
@@ -34,15 +38,16 @@ const MatchNotification = () => {
                     setNotification({
                         id: matchData.matchId || matchData._id,
                         otherUserId,
+                        otherUserImage: matchData.otherUserImage || null,
                         createdAt: matchData.createdAt
                     });
-                    setTimeout(() => setNotification(null), 10000);
+                    setShowConfetti(true);
+                    setTimeout(() => setShowConfetti(false), 3000);
+                    setTimeout(() => setNotification(null), 12000);
                 }
             };
 
             const handleMessageNotification = (data) => {
-                // Don't show toast if we are already in the chat view (this logic could be more robust)
-                // For now, just show it.
                 setMessageToast(data);
                 setTimeout(() => setMessageToast(null), 5000);
             };
@@ -57,7 +62,7 @@ const MatchNotification = () => {
         }
     }, [socket, currentUserId]);
 
-    const handleClose = () => setNotification(null);
+    const handleClose = () => { setNotification(null); setShowConfetti(false); };
 
     const handleSendMessageNow = () => {
         navigate('/matches', { state: { autoOpenChat: originalMatchData } });
@@ -69,70 +74,89 @@ const MatchNotification = () => {
         setMessageToast(null);
     };
 
+    // Get user avatar
+    const currentUserImage = user?.images?.[0] ? getImageUrl(user.images[0]) : null;
+    const currentInitial = currentUserId?.charAt(0).toUpperCase() || '?';
+    const otherInitial = notification?.otherUserId?.charAt(0).toUpperCase() || '?';
+
     return (
         <>
             {notification && (
-                <div className="match-notification-overlay">
-                    <div className="match-notification">
-                        <div className="decoration deco-1">🎉</div>
-                        <div className="decoration deco-2">✨</div>
-                        <div className="decoration deco-3">🥳</div>
-                        <div className="decoration deco-4">🎊</div>
-                        <div className="decoration deco-5">⭐</div>
+                <div className="match-overlay" onClick={handleClose}>
+                    {/* Confetti particles */}
+                    {showConfetti && (
+                        <div className="confetti-container">
+                            {[...Array(50)].map((_, i) => (
+                                <div key={i} className="confetti-piece" style={{
+                                    '--x': `${Math.random() * 100}vw`,
+                                    '--delay': `${Math.random() * 2}s`,
+                                    '--duration': `${2 + Math.random() * 3}s`,
+                                    '--color': ['#fd267a', '#ff6036', '#ffd700', '#4ade80', '#3b82f6', '#a855f7'][Math.floor(Math.random() * 6)],
+                                    '--size': `${4 + Math.random() * 8}px`,
+                                    '--rotation': `${Math.random() * 360}deg`,
+                                }} />
+                            ))}
+                        </div>
+                    )}
 
-                        <button className="close-btn" onClick={handleClose}>×</button>
-
-                        <div className="notification-content">
-                            <div className="congrats-text">CHÚC MỪNG! 🎉</div>
-                            <div className="match-icon">💘</div>
-                            <h2 className="match-title">Tương hợp hoàn hảo!</h2>
-                            <p className="match-message">
-                                Bạn và <strong>{notification.otherUserId}</strong> đã tìm thấy nhau!
+                    <div className="match-popup" onClick={(e) => e.stopPropagation()}>
+                        {/* "It's a Match!" text - Tinder signature */}
+                        <div className="match-title-area">
+                            <h1 className="its-a-match">It's a Match!</h1>
+                            <p className="match-subtitle">
+                                Bạn và <strong>{notification.otherUserId}</strong> đã thích nhau
                             </p>
+                        </div>
 
-                            <div className="user-avatars">
-                                <div className="avatar-wrapper">
-                                    <div className="avatar current-user">
-                                        {currentUserId?.charAt(0).toUpperCase()}
-                                    </div>
-                                    <span className="user-label">Bạn</span>
-                                </div>
-
-                                <div className="heart-container">
-                                    <div className="pulse-ring"></div>
-                                    <div className="heart-icon">💖</div>
-                                </div>
-
-                                <div className="avatar-wrapper">
-                                    <div className="avatar other-user">
-                                        {notification.otherUserId?.charAt(0).toUpperCase()}
-                                    </div>
-                                    <span className="user-label">{notification.otherUserId}</span>
-                                </div>
+                        {/* Two avatars side by side - Tinder style */}
+                        <div className="match-avatars">
+                            <div className="match-avatar-circle left-avatar">
+                                {currentUserImage ? (
+                                    <img src={currentUserImage} alt="You" />
+                                ) : (
+                                    <span>{currentInitial}</span>
+                                )}
                             </div>
 
-                            <div className="notification-actions">
-                                <button className="send-message-btn" onClick={handleSendMessageNow}>
-                                    <span>💬</span> Gửi tin nhắn ngay
-                                </button>
-                                <button className="keep-swiping-btn" onClick={handleClose}>
-                                    Tiếp tục khám phá
-                                </button>
+                            <div className="match-heart-icon">
+                                <svg viewBox="0 0 24 24" width="32" height="32" fill="#fd267a">
+                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                                </svg>
                             </div>
+
+                            <div className="match-avatar-circle right-avatar">
+                                {notification.otherUserImage ? (
+                                    <img src={getImageUrl(notification.otherUserImage)} alt={notification.otherUserId} />
+                                ) : (
+                                    <span>{otherInitial}</span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="match-buttons">
+                            <button className="match-send-btn" onClick={handleSendMessageNow}>
+                                Gửi tin nhắn
+                            </button>
+                            <button className="match-continue-btn" onClick={handleClose}>
+                                Tiếp tục vuốt
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
+            {/* Message Toast */}
             {messageToast && (
-                <div className="message-toast" onClick={handleOpenChatFromToast}>
-                    <div className="toast-avatar">
+                <div className="msg-toast" onClick={handleOpenChatFromToast}>
+                    <div className="msg-toast-avatar">
                         {messageToast.senderId?.charAt(0).toUpperCase()}
                     </div>
-                    <div className="toast-info">
+                    <div className="msg-toast-content">
                         <h4>{messageToast.senderId}</h4>
                         <p>{messageToast.content}</p>
                     </div>
+                    <span className="msg-toast-time">Bây giờ</span>
                 </div>
             )}
         </>

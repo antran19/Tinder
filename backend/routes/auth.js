@@ -83,7 +83,8 @@ router.post('/register', async (req, res) => {
                     birthday: newUser.birthday,
                     preferences: newUser.preferences,
                     credits: newUser.credits,
-                    subscription: newUser.subscription
+                    subscription: newUser.subscription,
+                    role: newUser.role || 'user'
                 }
             }
         });
@@ -164,7 +165,8 @@ router.post('/login', async (req, res) => {
                     preferences: user.preferences,
                     credits: user.credits,
                     subscription: user.subscription,
-                    bio: user.bio
+                    bio: user.bio,
+                    role: user.role || 'user'
                 }
             }
         });

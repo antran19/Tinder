@@ -3,23 +3,33 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import './App.css';
 import SwipeView from './components/SwipeView';
 import MatchList from './components/MatchList';
-import Navigation from './components/Navigation';
+import BottomNav from './components/BottomNav';
 import MatchNotification from './components/MatchNotification';
 import LoginPage from './components/LoginPage';
-import RegisterPage from './components/RegisterPage'; // Mới
-import EditProfile from './components/EditProfile'; // Mới
-import PremiumPage from './components/PremiumPage'; // Mới
-import WhoLikedYou from './components/WhoLikedYou'; // Mới
+import RegisterPage from './components/RegisterPage';
+import EditProfile from './components/EditProfile';
+import PremiumPage from './components/PremiumPage';
+import WhoLikedYou from './components/WhoLikedYou';
+import DiscoverPage from './components/DiscoverPage';
+import InsightsPage from './components/InsightsPage';
+import SettingsPage from './components/SettingsPage';
+import AdminDashboard from './components/AdminDashboard';
+import LandingPage from './components/LandingPage';
+import ToastNotifications from './components/ToastNotifications';
 import { SocketProvider } from './context/SocketContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-// Component bảo vệ Route: Nếu chưa đăng nhập thì đuổi về trang Login
+const PublicRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <div className="app-loading"><div className="app-loading-flame">🔥</div></div>;
+  if (isAuthenticated) return <Navigate to="/swipe" replace />;
+  return children;
+};
+
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
-
-  if (loading) return <div>Đang tải...</div>;
+  if (loading) return <div className="app-loading"><div className="app-loading-flame">🔥</div></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-
   return children;
 };
 
@@ -30,27 +40,31 @@ function App() {
         <Router>
           <div className="App">
             <Routes>
-              {/* Trang Login không cần Navigation bar */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
+              <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+              <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
-              {/* Các trang cần đăng nhập mới xem được */}
               <Route path="/*" element={
                 <ProtectedRoute>
-                  <>
-                    <Navigation />
-                    <main className="main-content">
+                  <div className="tinder-layout">
+                    <main className="tinder-main">
                       <Routes>
-                        <Route path="/" element={<Navigate to="/swipe" replace />} />
+                        <Route path="/app" element={<Navigate to="/swipe" replace />} />
                         <Route path="/swipe" element={<SwipeView />} />
+                        <Route path="/discover" element={<DiscoverPage />} />
                         <Route path="/matches" element={<MatchList />} />
                         <Route path="/profile" element={<EditProfile />} />
                         <Route path="/premium" element={<PremiumPage />} />
                         <Route path="/who-liked" element={<WhoLikedYou />} />
+                        <Route path="/insights" element={<InsightsPage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="/admin" element={<AdminDashboard />} />
                       </Routes>
                     </main>
+                    <BottomNav />
                     <MatchNotification />
-                  </>
+                    <ToastNotifications />
+                  </div>
                 </ProtectedRoute>
               } />
             </Routes>

@@ -210,9 +210,8 @@ io.on('connection', (socket) => {
 
       // 3. (Optional) Gửi notification cho người nhận nếu họ không ở trong phòng chat
       // Có thể dùng một event riêng hoặc emit tới userId room
-      const match = await Match.findById(targetMatchId);
+      const match = await Match.findById(matchId);
       if (match) {
-        const normalizedSenderId = senderId?.toString().toLowerCase();
         const receiverId = match.participants.find(id => id.toString().toLowerCase() !== normalizedSenderId);
         if (receiverId) {
           const normalizedReceiverId = receiverId.toString().toLowerCase();
@@ -443,6 +442,11 @@ app.use('/api/messages', messagesRoutes);
 app.use('/api/matches', matchesRoutes);
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/premium', require('./routes/premium'));
+app.use('/api/payment', require('./routes/payment')); // QR Bank Payment
+app.use('/api/admin', require('./routes/admin'));      // Admin Dashboard
+app.use('/api/stories', require('./routes/stories'));  // Stories 24h
+app.use('/api/reports', require('./routes/reports'));  // Report & Block
+app.use('/api/verification', require('./routes/verification')); // Selfie Verification
 app.use('/api/upload', uploadRoutes); // Upload images (chat & profile)
 
 console.log('✅ API routes setup completed');

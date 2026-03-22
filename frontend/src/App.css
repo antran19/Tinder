@@ -4,21 +4,45 @@
   flex-direction: column;
 }
 
-.main-content {
+/* ===== TINDER LAYOUT ===== */
+.tinder-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.tinder-main {
   flex: 1;
-  padding-top: 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 68px; /* Space for bottom nav */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Loading Screen */
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: linear-gradient(180deg, #111118 0%, #1a1a2e 100%);
+}
+
+.app-loading-flame {
+  font-size: 4rem;
+  animation: flamePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes flamePulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.2); opacity: 1; }
 }
 
 /* Global button styles */
 button {
   font-family: inherit;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-  .main-content {
-    padding: 0.5rem;
-  }
 }
 
 /* Loading animations */
@@ -29,10 +53,28 @@ button {
 
 .spinner {
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #667eea;
+  border-top: 4px solid #fd267a;
   border-radius: 50%;
   width: 40px;
   height: 40px;
   animation: spin 1s linear infinite;
   margin: 0 auto;
+}
+
+/* Scrollbar styling */
+.tinder-main::-webkit-scrollbar {
+  width: 4px;
+}
+
+.tinder-main::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tinder-main::-webkit-scrollbar-thumb {
+  background: rgba(253, 38, 122, 0.3);
+  border-radius: 4px;
+}
+
+.tinder-main::-webkit-scrollbar-thumb:hover {
+  background: rgba(253, 38, 122, 0.5);
 }

@@ -1,0 +1,308 @@
+.report-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(6px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: reportFadeIn 0.3s ease;
+}
+
+@keyframes reportFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.report-modal {
+    background: var(--card-bg, #1a1a2e);
+    border: 1px solid var(--card-border, #333);
+    border-radius: 24px;
+    padding: 1.8rem;
+    max-width: 420px;
+    width: 100%;
+    animation: reportSlideUp 0.3s ease;
+}
+
+@keyframes reportSlideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.report-modal h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-primary, #fff);
+    margin: 0 0 0.3rem;
+    text-align: center;
+}
+
+.report-subtitle {
+    text-align: center;
+    color: var(--text-muted, #888);
+    font-size: 0.9rem;
+    margin: 0 0 1.2rem;
+}
+
+.report-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid var(--card-border, #333);
+    border-radius: 16px;
+    background: transparent;
+    color: var(--text-primary, #fff);
+    cursor: pointer;
+    text-align: left;
+    margin-bottom: 0.6rem;
+    transition: all 0.2s;
+}
+
+.report-action-btn span {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.report-action-btn strong {
+    display: block;
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+}
+
+.report-action-btn p {
+    font-size: 0.78rem;
+    color: var(--text-muted, #888);
+    margin: 0;
+}
+
+.report-action-btn.report:hover {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.report-action-btn.block:hover {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.report-cancel-btn {
+    display: block;
+    width: 100%;
+    padding: 0.7rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted, #888);
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    border-radius: 12px;
+    transition: background 0.2s;
+}
+
+.report-cancel-btn:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+/* Reasons */
+.report-reasons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin: 1rem 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.reason-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.7rem;
+    border: 1px solid var(--card-border, #333);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.reason-item:hover {
+    background: rgba(255,255,255,0.03);
+}
+
+.reason-item.selected {
+    border-color: #fd267a;
+    background: rgba(253, 38, 122, 0.08);
+}
+
+.reason-item input[type="radio"] {
+    display: none;
+}
+
+.reason-item strong {
+    display: block;
+    font-size: 0.88rem;
+    color: var(--text-primary, #fff);
+}
+
+.reason-item p {
+    font-size: 0.75rem;
+    color: var(--text-muted, #888);
+    margin: 2px 0 0;
+}
+
+.report-description {
+    width: 100%;
+    padding: 0.7rem;
+    border: 1px solid var(--card-border, #333);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-primary, #fff);
+    font-size: 0.85rem;
+    resize: none;
+    margin-bottom: 0.5rem;
+}
+
+.report-buttons {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.8rem;
+}
+
+.report-back-btn {
+    flex: 1;
+    padding: 0.7rem;
+    border: 1px solid var(--card-border, #333);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-muted, #888);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.report-submit-btn {
+    flex: 2;
+    padding: 0.7rem;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.report-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Success */
+.report-success {
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.success-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.report-success p {
+    color: var(--text-muted, #888);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0.5rem 0 1.2rem;
+}
+
+.report-done-btn {
+    padding: 0.7rem 2rem;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #fd267a, #ff6036);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+/* Toast Notification */
+.toast-notification {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: var(--card-bg, #1a1a2e);
+    border: 1px solid var(--card-border, #333);
+    border-radius: 16px;
+    padding: 1rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    z-index: 3000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    animation: toastSlideIn 0.4s ease, toastSlideOut 0.4s ease 4.6s forwards;
+    max-width: 360px;
+}
+
+@keyframes toastSlideIn {
+    from { opacity: 0; transform: translateX(100px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastSlideOut {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(100px); }
+}
+
+.toast-notification.like {
+    border-left: 4px solid #ec4899;
+}
+
+.toast-notification.match {
+    border-left: 4px solid #4ade80;
+}
+
+.toast-notification.message {
+    border-left: 4px solid #3b82f6;
+}
+
+.toast-notification.verification {
+    border-left: 4px solid #f59e0b;
+}
+
+.toast-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-content strong {
+    display: block;
+    font-size: 0.88rem;
+    color: var(--text-primary, #fff);
+    margin-bottom: 2px;
+}
+
+.toast-content p {
+    font-size: 0.78rem;
+    color: var(--text-muted, #888);
+    margin: 0;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: var(--text-muted, #888);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 4px;
+}

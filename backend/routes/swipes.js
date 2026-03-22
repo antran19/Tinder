@@ -119,13 +119,28 @@ router.post('/', async (req, res) => {
     let matchResult = { match: false };
 
     // 2. Nếu là "like", check mutual like và tạo match
-    if (type === 'like') {
+    if (type === 'like' || type === 'super_like') {
+      // Gửi notification "Ai đó đã thích bạn" realtime
+      if (global.io) {
+        global.io.to(toUserId.toLowerCase()).emit('new-like', {
+          fromUserId,
+          fromUserName: fromUser.firstName,
+          fromUserImage: fromUser.images?.[0] || '',
+          type,
+          message: type === 'super_like' 
+            ? `⭐ ${fromUser.firstName} đã Super Like bạn!` 
+            : `💕 ${fromUser.firstName} đã thích bạn!`,
+          createdAt: new Date()
+        });
+        console.log(`💕 Sent new-like notification to ${toUserId}`);
+      }
+
       console.log(`💕 Checking mutual like: ${toUserId} → ${fromUserId}`);
 
       const mutualLike = await Swipe.findOne({
         fromUserId: toUserId,
         toUserId: fromUserId,
-        type: 'like'
+        type: { $in: ['like', 'super_like'] }
       });
 
       if (mutualLike) {

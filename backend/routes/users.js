@@ -10,15 +10,65 @@ const router = express.Router();
 const { User, Swipe } = require('../models');
 
 /**
+ * PUT /api/users/:userId/location
+ * Cập nhật vị trí GPS của user
+ */
+router.put('/:userId/location', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { latitude, longitude, city } = req.body;
+
+    if (latitude == null || longitude == null) {
+      return res.status(400).json({ success: false, message: 'Cần cung cấp latitude và longitude' });
+    }
+
+    const user = await User.findOneAndUpdate(
+      { userId },
+      {
+        $set: {
+          'location.type': 'Point',
+          'location.coordinates': [longitude, latitude], // GeoJSON: [lng, lat]
+          'location.lastUpdated': new Date(),
+          'location.city': city || ''
+        }
+      },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy user' });
+    }
+
+    console.log(`📍 Updated location for ${userId}: [${latitude}, ${longitude}] ${city || ''}`);
+
+    res.json({
+      success: true,
+      message: 'Cập nhật vị trí thành công',
+      data: { location: user.location }
+    });
+  } catch (error) {
+    console.error('❌ Lỗi cập nhật vị trí:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+});
+
+/**
+ * Hàm tính khoảng cách Haversine (km) giữa 2 tọa độ
+ */
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Bán kính trái đất (km)
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10; // Làm tròn 1 chữ số thập phân
+}
+
+/**
  * GET /api/users/available/:userId
- * Lấy danh sách users available để swipe
- * 
- * Logic:
- * 1. Loại trừ user hiện tại
- * 2. Loại trừ users đã được swipe (cả like và pass)
- * 3. Trả về danh sách users còn lại
- * 
- * Requirements: 1.1, 1.2
+ * Lấy danh sách users available để swipe (có hỗ trợ lọc khoảng cách)
  */
 router.get('/available/:userId', async (req, res) => {
   try {
@@ -36,6 +86,7 @@ router.get('/available/:userId', async (req, res) => {
     const genderPref = currentUser.preferences?.genderPreference || (currentUser.gender === 'male' ? 'female' : 'male');
     const minAge = currentUser.preferences?.ageRange?.min || 18;
     const maxAge = currentUser.preferences?.ageRange?.max || 99;
+    const maxDistance = currentUser.preferences?.maxDistance || 50; // km
 
     // 2. Lấy danh sách userIds đã được swipe bởi user hiện tại
     const swipedUserIds = await Swipe.find({
@@ -46,14 +97,12 @@ router.get('/available/:userId', async (req, res) => {
     const excludeUserIds = [...swipedUserIds, userId];
 
     const currentYear = new Date().getFullYear();
-    // Tính năm sinh tương ứng (Càng nhỏ tuổi thì năm sinh càng lớn)
     const latestBirthYear = currentYear - minAge;
     const earliestBirthYear = currentYear - maxAge;
 
     const query = {
       userId: { $nin: excludeUserIds },
       gender: genderPref,
-      // Lọc theo năm sinh cho đơn giản và chính xác hơn
       $expr: {
         $and: [
           { $lte: [{ $year: "$birthday" }, latestBirthYear] },
@@ -63,15 +112,47 @@ router.get('/available/:userId', async (req, res) => {
     };
 
     const availableUsers = await User.find(query)
-      .select('userId firstName birthday gender bio images isOnline createdAt interests profileDetails isVerified');
+      .select('userId firstName birthday gender bio images isOnline createdAt interests profileDetails isVerified location');
 
-    console.log(`✅ Tìm thấy ${availableUsers.length} users cho ${userId} (Tìm ${genderPref}, Tuổi ${minAge}-${maxAge})`);
+    // 4. Tính khoảng cách nếu user hiện tại có GPS
+    const myLat = currentUser.location?.coordinates?.[1];
+    const myLng = currentUser.location?.coordinates?.[0];
+    const hasMyLocation = myLat && myLng && (myLat !== 0 || myLng !== 0);
+
+    let usersWithDistance = availableUsers.map(u => {
+      const userData = u.toObject();
+
+      if (hasMyLocation && u.location?.coordinates?.[1] && u.location?.coordinates?.[0]) {
+        const theirLat = u.location.coordinates[1];
+        const theirLng = u.location.coordinates[0];
+        if (theirLat !== 0 || theirLng !== 0) {
+          userData.distance = calculateDistance(myLat, myLng, theirLat, theirLng);
+        }
+      }
+
+      // Không trả về tọa độ chính xác cho client (bảo mật)
+      delete userData.location;
+
+      return userData;
+    });
+
+    // 5. Lọc theo khoảng cách nếu có GPS
+    if (hasMyLocation) {
+      usersWithDistance = usersWithDistance.filter(u =>
+        u.distance === undefined || u.distance <= maxDistance
+      );
+      // Sắp xếp theo khoảng cách gần nhất
+      usersWithDistance.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+    }
+
+    console.log(`✅ Tìm thấy ${usersWithDistance.length} users cho ${userId} (Tìm ${genderPref}, Tuổi ${minAge}-${maxAge}, Bán kính ${maxDistance}km)`);
 
     res.json({
       success: true,
       data: {
-        users: availableUsers,
-        filtersApplied: { genderPref, minAge, maxAge }
+        users: usersWithDistance,
+        filtersApplied: { genderPref, minAge, maxAge, maxDistance },
+        hasLocation: hasMyLocation
       }
     });
 

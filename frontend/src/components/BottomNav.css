@@ -1,0 +1,333 @@
+/* ===== TINDER-STYLE HEADER ===== */
+.tinder-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: var(--nav-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--card-border);
+}
+
+.tinder-header-inner {
+    max-width: 600px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    height: 50px;
+}
+
+/* Logo */
+.tinder-logo-link {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    text-decoration: none;
+}
+
+.tinder-logo-flame {
+    font-size: 1.6rem;
+    filter: drop-shadow(0 2px 6px rgba(253, 38, 122, 0.4));
+}
+
+.tinder-logo-text {
+    font-size: 1.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fd267a, #ff6036);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+    text-transform: lowercase;
+}
+
+/* Header Center - Gold Button */
+.header-center {
+    display: flex;
+    align-items: center;
+}
+
+.header-gold-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #c6922a, #ffd700, #c6922a);
+    background-size: 200% 100%;
+    animation: goldShimmer 3s ease-in-out infinite;
+    color: white;
+    text-decoration: none;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 12px rgba(198, 146, 42, 0.4);
+    transition: all 0.3s;
+    text-transform: uppercase;
+}
+
+.header-gold-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(198, 146, 42, 0.5);
+}
+
+.header-gold-btn svg {
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+}
+
+@keyframes goldShimmer {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Header Right Icons */
+.header-right {
+    display: flex;
+    gap: 0.3rem;
+    align-items: center;
+}
+
+.header-icon-btn {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 1.1rem;
+}
+
+.header-icon-btn:hover {
+    background: rgba(253, 38, 122, 0.08);
+}
+
+.header-icon-btn svg {
+    transition: fill 0.2s;
+}
+
+.header-icon-btn:hover svg {
+    fill: #fd267a;
+}
+
+.header-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: #fd267a;
+    color: white;
+    font-size: 0.6rem;
+    min-width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    padding: 0 3px;
+    border: 2px solid var(--nav-bg);
+    line-height: 1;
+}
+
+/* ===== BOTTOM NAVIGATION BAR ===== */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: var(--nav-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--card-border);
+    padding: 0;
+    height: 64px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Tab Item */
+.bottom-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    text-decoration: none;
+    color: var(--text-muted);
+    padding: 6px 0;
+    position: relative;
+    transition: color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-tab:hover {
+    color: var(--text-primary);
+}
+
+.bottom-tab.active {
+    color: #fd267a;
+}
+
+.bottom-tab.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 3px;
+    background: linear-gradient(135deg, #fd267a, #ff6036);
+    border-radius: 0 0 3px 3px;
+}
+
+/* Tab Icon */
+.tab-icon-wrap {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tab-svg {
+    width: 26px;
+    height: 26px;
+    color: inherit;
+    transition: transform 0.2s;
+}
+
+.bottom-tab.active .tab-svg {
+    transform: scale(1.1);
+}
+
+.tab-active-emoji {
+    font-size: 1.4rem;
+    animation: tabPop 0.3s ease;
+}
+
+@keyframes tabPop {
+    0% { transform: scale(0.5); }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* Tab Label */
+.tab-label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+}
+
+/* Badge */
+.tab-badge {
+    position: absolute;
+    top: -4px;
+    right: -8px;
+    background: #fd267a;
+    color: white;
+    font-size: 0.55rem;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    padding: 0 4px;
+    border: 2px solid var(--nav-bg);
+    animation: badgePop 0.3s ease;
+}
+
+@keyframes badgePop {
+    0% { transform: scale(0); }
+    60% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+/* Premium Tab */
+.premium-tab .tab-svg {
+    color: #ffd700;
+}
+
+.premium-tab.active {
+    color: #ffd700;
+}
+
+.premium-tab.active::before {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+}
+
+/* Profile Avatar Tab */
+.profile-tab-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.profile-tab-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-tab-avatar.active-ring {
+    border-color: #fd267a;
+    box-shadow: 0 0 0 1px #fd267a;
+}
+
+/* ===== TINDER-MAIN needs top padding for header ===== */
+.tinder-main {
+    padding-top: 50px !important;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (min-width: 768px) {
+    .bottom-nav {
+        max-width: 600px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: 24px 24px 0 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .tinder-header-inner {
+        padding: 0.5rem 1.5rem;
+    }
+}
+
+@media (max-width: 380px) {
+    .tab-label {
+        font-size: 0.55rem;
+    }
+
+    .tinder-logo-text {
+        font-size: 1.2rem;
+    }
+}

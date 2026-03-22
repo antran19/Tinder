@@ -584,6 +584,48 @@ export const apiService = {
       console.error('Error getting transactions:', error);
       return { transactions: [], totalSpent: 0 };
     }
+  },
+
+  // ===== LOCATION =====
+  async updateLocation(userId, latitude, longitude, city = '') {
+    try {
+      const response = await api.put(`/users/${userId}/location`, { latitude, longitude, city });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating location:', error);
+      return null;
+    }
+  },
+
+  // ===== BANK QR PAYMENT =====
+  async generateBankQR(userId, tier, amount) {
+    try {
+      const response = await api.post('/payment/generate-qr', { userId, tier, amount });
+      return response.data;
+    } catch (error) {
+      console.error('Error generating QR:', error);
+      throw error;
+    }
+  },
+
+  async confirmBankTransfer(userId, transactionCode) {
+    try {
+      const response = await api.post('/payment/confirm-transfer', { userId, transactionCode });
+      return response.data;
+    } catch (error) {
+      console.error('Error confirming transfer:', error);
+      throw error;
+    }
+  },
+
+  async checkPaymentStatus(transactionCode) {
+    try {
+      const response = await api.get(`/payment/check-status/${transactionCode}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      throw error;
+    }
   }
 };
 

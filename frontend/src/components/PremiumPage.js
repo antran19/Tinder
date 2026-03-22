@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/apiService';
 import './PremiumPage.css';
@@ -8,8 +8,8 @@ const PremiumPage = () => {
     const [loading, setLoading] = useState(false);
     const [showCheckout, setShowCheckout] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState(null);
-    const [paymentMethod, setPaymentMethod] = useState('momo');
-    const [paymentStep, setPaymentStep] = useState('select'); // select, processing, success, failed
+    const [paymentMethod, setPaymentMethod] = useState('bank_qr');
+    const [paymentStep, setPaymentStep] = useState('select'); // select, qr_display, processing, success, failed
     const [transactions, setTransactions] = useState([]);
     const [totalSpent, setTotalSpent] = useState(0);
     const [showHistory, setShowHistory] = useState(false);
@@ -17,9 +17,32 @@ const PremiumPage = () => {
     const [cardExpiry, setCardExpiry] = useState('');
     const [cardCvv, setCardCvv] = useState('');
 
+    // QR Payment state
+    const [qrData, setQrData] = useState(null);
+    const [qrCountdown, setQrCountdown] = useState(900); // 15 phút = 900 giây
+    const [copied, setCopied] = useState('');
+
     useEffect(() => {
         if (user) loadTransactions();
     }, [user]);
+
+    // Countdown timer cho QR
+    useEffect(() => {
+        let timer;
+        if (paymentStep === 'qr_display' && qrCountdown > 0) {
+            timer = setInterval(() => {
+                setQrCountdown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        setPaymentStep('failed');
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [paymentStep, qrCountdown]);
 
     const loadTransactions = async () => {
         try {
@@ -35,9 +58,64 @@ const PremiumPage = () => {
         setSelectedPlan(plan);
         setPaymentStep('select');
         setShowCheckout(true);
+        setQrData(null);
+        setQrCountdown(900);
     };
 
-    const handlePurchase = async () => {
+    // Tạo QR và chuyển sang bước hiển thị QR
+    const handleGenerateQR = async () => {
+        if (!user || !selectedPlan) return;
+        setLoading(true);
+
+        try {
+            const response = await apiService.generateBankQR(
+                user.userId,
+                selectedPlan.tier,
+                selectedPlan.rawPrice
+            );
+
+            if (response.success) {
+                setQrData(response.data);
+                setQrCountdown(900);
+                setPaymentStep('qr_display');
+            }
+        } catch (error) {
+            console.error('Error generating QR:', error);
+            setPaymentStep('failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Xác nhận đã chuyển khoản
+    const handleConfirmTransfer = async () => {
+        if (!user || !qrData) return;
+        setPaymentStep('processing');
+        setLoading(true);
+
+        try {
+            const response = await apiService.confirmBankTransfer(
+                user.userId,
+                qrData.transactionCode
+            );
+
+            if (response.success) {
+                setPaymentStep('success');
+                updateUserData({
+                    subscription: response.data.subscription,
+                    credits: response.data.credits
+                });
+                loadTransactions();
+            }
+        } catch (error) {
+            setPaymentStep('failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Thanh toán qua các phương thức khác (MoMo, VNPay, ZaloPay, Card)
+    const handleOtherPurchase = async () => {
         if (!user || !selectedPlan) return;
 
         setPaymentStep('processing');
@@ -66,12 +144,21 @@ const PremiumPage = () => {
         }
     };
 
+    const handlePurchase = () => {
+        if (paymentMethod === 'bank_qr') {
+            handleGenerateQR();
+        } else {
+            handleOtherPurchase();
+        }
+    };
+
     const closeCheckout = () => {
         setShowCheckout(false);
         setPaymentStep('select');
         setCardNumber('');
         setCardExpiry('');
         setCardCvv('');
+        setQrData(null);
         if (paymentStep === 'success') {
             window.location.reload();
         }
@@ -84,6 +171,19 @@ const PremiumPage = () => {
             parts.push(v.substring(i, i + 4));
         }
         return parts.join(' ');
+    };
+
+    const copyToClipboard = (text, field) => {
+        navigator.clipboard.writeText(text).then(() => {
+            setCopied(field);
+            setTimeout(() => setCopied(''), 2000);
+        });
+    };
+
+    const formatCountdown = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
     const isPremium = user?.subscription?.tier && user?.subscription?.tier !== 'free';
@@ -151,7 +251,7 @@ const PremiumPage = () => {
     };
 
     const getMethodLabel = (method) => {
-        const labels = { momo: '📱 MoMo', vnpay: '🏦 VNPay', card: '💳 Thẻ Quốc tế', zalopay: '📲 ZaloPay' };
+        const labels = { momo: '📱 MoMo', vnpay: '🏦 VNPay', card: '💳 Thẻ Quốc tế', zalopay: '📲 ZaloPay', bank_qr: '🏧 QR Ngân hàng' };
         return labels[method] || method;
     };
 
@@ -308,6 +408,7 @@ const PremiumPage = () => {
                                 <div className="payment-methods">
                                     <h4>Chọn phương thức thanh toán</h4>
                                     {[
+                                        { id: 'bank_qr', label: 'QR Ngân hàng', icon: '🏧', desc: 'Chuyển khoản qua mã QR ngân hàng', recommended: true },
                                         { id: 'momo', label: 'Ví MoMo', icon: '📱', desc: 'Thanh toán qua ví điện tử MoMo' },
                                         { id: 'vnpay', label: 'VNPay', icon: '🏦', desc: 'Thanh toán qua VNPay QR' },
                                         { id: 'zalopay', label: 'ZaloPay', icon: '📲', desc: 'Thanh toán qua ZaloPay' },
@@ -321,7 +422,10 @@ const PremiumPage = () => {
                                             <div className="method-left">
                                                 <span className="method-icon">{method.icon}</span>
                                                 <div>
-                                                    <strong>{method.label}</strong>
+                                                    <strong>
+                                                        {method.label}
+                                                        {method.recommended && <span className="method-recommended">Khuyên dùng</span>}
+                                                    </strong>
                                                     <small>{method.desc}</small>
                                                 </div>
                                             </div>
@@ -391,11 +495,118 @@ const PremiumPage = () => {
                                         onClick={handlePurchase}
                                         disabled={loading}
                                     >
-                                        Thanh toán {selectedPlan.price}
+                                        {paymentMethod === 'bank_qr' ? `Tạo mã QR - ${selectedPlan.price}` : `Thanh toán ${selectedPlan.price}`}
                                     </button>
                                     <p className="secure-note">🔒 Thanh toán an toàn & bảo mật</p>
                                 </div>
                             </>
+                        )}
+
+                        {/* Step: QR DISPLAY */}
+                        {paymentStep === 'qr_display' && qrData && (
+                            <div className="qr-payment-step">
+                                <div className="qr-header">
+                                    <h2>🏧 Quét mã QR để thanh toán</h2>
+                                    <p>Mở app ngân hàng → Quét QR → Chuyển khoản</p>
+                                </div>
+
+                                {/* QR Code */}
+                                <div className="qr-code-wrapper">
+                                    <div className="qr-code-container">
+                                        <img
+                                            src={qrData.qrUrl}
+                                            alt="QR Code chuyển khoản"
+                                            className="qr-code-image"
+                                            onError={(e) => {
+                                                e.target.style.display = 'none';
+                                                e.target.nextSibling.style.display = 'flex';
+                                            }}
+                                        />
+                                        <div className="qr-error" style={{ display: 'none' }}>
+                                            <span>⚠️</span>
+                                            <p>Không tải được QR. Vui lòng chuyển khoản thủ công.</p>
+                                        </div>
+                                    </div>
+                                    <div className={`qr-countdown ${qrCountdown < 60 ? 'urgent' : ''}`}>
+                                        ⏱️ Hết hạn sau: <strong>{formatCountdown(qrCountdown)}</strong>
+                                    </div>
+                                </div>
+
+                                {/* Bank Info */}
+                                <div className="bank-transfer-info">
+                                    <h4>Thông tin chuyển khoản</h4>
+
+                                    <div className="bank-info-row">
+                                        <span className="bank-info-label">Ngân hàng</span>
+                                        <div className="bank-info-value">
+                                            <span>{qrData.bankInfo.bankName}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="bank-info-row">
+                                        <span className="bank-info-label">Số tài khoản</span>
+                                        <div className="bank-info-value">
+                                            <span className="monospace">{qrData.bankInfo.accountNo}</span>
+                                            <button
+                                                className={`copy-btn ${copied === 'accountNo' ? 'copied' : ''}`}
+                                                onClick={() => copyToClipboard(qrData.bankInfo.accountNo, 'accountNo')}
+                                            >
+                                                {copied === 'accountNo' ? '✓ Đã sao chép' : '📋 Sao chép'}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="bank-info-row">
+                                        <span className="bank-info-label">Chủ tài khoản</span>
+                                        <div className="bank-info-value">
+                                            <span className="account-name">{qrData.bankInfo.accountName}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="bank-info-row">
+                                        <span className="bank-info-label">Số tiền</span>
+                                        <div className="bank-info-value">
+                                            <span className="amount-highlight">{qrData.amount.toLocaleString('vi-VN')}đ</span>
+                                            <button
+                                                className={`copy-btn ${copied === 'amount' ? 'copied' : ''}`}
+                                                onClick={() => copyToClipboard(qrData.amount.toString(), 'amount')}
+                                            >
+                                                {copied === 'amount' ? '✓ Đã sao chép' : '📋 Sao chép'}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="bank-info-row">
+                                        <span className="bank-info-label">Nội dung CK</span>
+                                        <div className="bank-info-value">
+                                            <span className="monospace transfer-content">{qrData.bankInfo.transferContent}</span>
+                                            <button
+                                                className={`copy-btn ${copied === 'content' ? 'copied' : ''}`}
+                                                onClick={() => copyToClipboard(qrData.bankInfo.transferContent, 'content')}
+                                            >
+                                                {copied === 'content' ? '✓ Đã sao chép' : '📋 Sao chép'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="qr-notice">
+                                    <p>⚠️ <strong>Lưu ý:</strong> Vui lòng nhập chính xác nội dung chuyển khoản để hệ thống tự động xác nhận.</p>
+                                </div>
+
+                                <div className="qr-actions">
+                                    <button
+                                        className="confirm-transfer-btn"
+                                        onClick={handleConfirmTransfer}
+                                        disabled={loading}
+                                    >
+                                        {loading ? 'Đang xác nhận...' : '✅ Tôi đã chuyển khoản'}
+                                    </button>
+                                    <button className="back-btn" onClick={() => setPaymentStep('select')}>
+                                        ← Quay lại
+                                    </button>
+                                </div>
+                            </div>
                         )}
 
                         {/* Step: PROCESSING */}
@@ -428,9 +639,13 @@ const PremiumPage = () => {
                         {paymentStep === 'failed' && (
                             <div className="payment-result failed">
                                 <div className="result-icon">❌</div>
-                                <h3>Thanh toán thất bại</h3>
-                                <p>Đã xảy ra lỗi. Vui lòng thử lại.</p>
-                                <button className="result-btn" onClick={() => setPaymentStep('select')}>
+                                <h3>{qrCountdown <= 0 ? 'Mã QR đã hết hạn' : 'Thanh toán thất bại'}</h3>
+                                <p>{qrCountdown <= 0 ? 'Vui lòng tạo mã QR mới.' : 'Đã xảy ra lỗi. Vui lòng thử lại.'}</p>
+                                <button className="result-btn" onClick={() => {
+                                    setPaymentStep('select');
+                                    setQrData(null);
+                                    setQrCountdown(900);
+                                }}>
                                     Thử lại
                                 </button>
                             </div>

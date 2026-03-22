@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/apiService';
 import './EditProfile.css';
@@ -226,8 +227,62 @@ const EditProfile = () => {
         }
     };
 
+    const displayName = formData.firstName || user?.userId || 'Bạn';
+    const userAge = formData.birthday ? Math.floor((new Date() - new Date(formData.birthday)) / (365.25 * 24 * 60 * 60 * 1000)) : null;
+    const isPremium = user?.subscription?.tier === 'gold' || user?.subscription?.tier === 'premium';
+
     return (
         <div className="edit-profile-container">
+            {/* Profile Preview Card */}
+            <div className="profile-preview-card">
+                <div className="preview-photo">
+                    {profileImages.length > 0 ? (
+                        <img src={getImageUrl(profileImages[0])} alt="Profile" />
+                    ) : (
+                        <div className="preview-avatar">
+                            {displayName.charAt(0).toUpperCase()}
+                        </div>
+                    )}
+                    <div className="preview-gradient" />
+                    <div className="preview-info">
+                        <h3>{displayName}{userAge ? `, ${userAge}` : ''}</h3>
+                        {profileDetails.occupation && <p>💼 {profileDetails.occupation}</p>}
+                    </div>
+                </div>
+                <div className="preview-stats">
+                    <div className="stat-item">
+                        <span className="stat-number">{profileImages.length}</span>
+                        <span className="stat-label">Ảnh</span>
+                    </div>
+                    <div className="stat-item">
+                        <span className="stat-number">{selectedInterests.length}</span>
+                        <span className="stat-label">Sở thích</span>
+                    </div>
+                    <div className="stat-item">
+                        <span className="stat-number">{formData.bio ? Math.round(formData.bio.length / 50 * 100) + '%' : '0%'}</span>
+                        <span className="stat-label">Hoàn thành</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Gold Upsell Banner */}
+            {!isPremium && (
+                <Link to="/premium" className="gold-upsell-banner">
+                    <div className="upsell-icon">
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="#ffd700">
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 3.9l5 2.22V11c0 3.87-2.68 7.49-5 8.36-2.32-.87-5-4.49-5-8.36V7.12l5-2.22z"/>
+                        </svg>
+                    </div>
+                    <div className="upsell-text">
+                        <h4>Nâng cấp Tinder Gold™</h4>
+                        <p>Xem ai đã Like bạn, Super Likes không giới hạn và nhiều hơn nữa</p>
+                    </div>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="rgba(255,255,255,0.7)">
+                        <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                    </svg>
+                </Link>
+            )}
+
             <div className="edit-profile-card">
                 <h2>✏️ Chỉnh sửa hồ sơ</h2>
                 <p className="subtitle">Cập nhật thông tin để thu hút người xem hơn!</p>
