@@ -919,3 +919,89 @@
         height: 300px;
     }
 }
+
+/* ===== AI MATCH ===== */
+.ai-match-section { width: 100%; }
+
+.ai-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.ai-header h3 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 0 0 0.3rem;
+    color: var(--text-primary);
+}
+
+.ai-header p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0 0 0.8rem;
+}
+
+.ai-refresh-btn {
+    padding: 0.5rem 1.2rem;
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ai-refresh-btn:hover:not(:disabled) {
+    border-color: #667eea;
+    color: #667eea;
+}
+
+.ai-score-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    color: white;
+    font-size: 0.78rem;
+    font-weight: 800;
+    z-index: 3;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.ai-compat-label {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    font-weight: 600;
+    display: inline-block;
+    margin-top: 2px;
+}
+
+.ai-breakdown {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 0.4rem;
+}
+
+.ai-breakdown span {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 8px;
+    background: rgba(100, 116, 139, 0.1);
+    color: var(--text-muted);
+    cursor: help;
+}
+
+.discover-boost-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 1.2rem;
+    z-index: 3;
+    animation: boostPulse 2s ease-in-out infinite;
+}

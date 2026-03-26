@@ -112,7 +112,7 @@ router.get('/available/:userId', async (req, res) => {
     };
 
     const availableUsers = await User.find(query)
-      .select('userId firstName birthday gender bio images isOnline createdAt interests profileDetails isVerified location');
+      .select('userId firstName birthday gender bio images isOnline createdAt interests profileDetails isVerified location boost');
 
     // 4. Tính khoảng cách nếu user hiện tại có GPS
     const myLat = currentUser.location?.coordinates?.[1];
@@ -130,8 +130,13 @@ router.get('/available/:userId', async (req, res) => {
         }
       }
 
+      // Boost status
+      const now = new Date();
+      userData.isBoosted = u.boost?.isActive && u.boost?.endsAt > now;
+
       // Không trả về tọa độ chính xác cho client (bảo mật)
       delete userData.location;
+      delete userData.boost;
 
       return userData;
     });
@@ -141,9 +146,14 @@ router.get('/available/:userId', async (req, res) => {
       usersWithDistance = usersWithDistance.filter(u =>
         u.distance === undefined || u.distance <= maxDistance
       );
-      // Sắp xếp theo khoảng cách gần nhất
-      usersWithDistance.sort((a, b) => (a.distance || 999) - (b.distance || 999));
     }
+
+    // 6. Sắp xếp: Boosted users lên đầu, sau đó theo khoảng cách
+    usersWithDistance.sort((a, b) => {
+      if (a.isBoosted && !b.isBoosted) return -1;
+      if (!a.isBoosted && b.isBoosted) return 1;
+      return (a.distance || 999) - (b.distance || 999);
+    });
 
     console.log(`✅ Tìm thấy ${usersWithDistance.length} users cho ${userId} (Tìm ${genderPref}, Tuổi ${minAge}-${maxAge}, Bán kính ${maxDistance}km)`);
 

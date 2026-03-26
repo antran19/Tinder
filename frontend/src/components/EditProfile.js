@@ -90,6 +90,14 @@ const EditProfile = () => {
     const [status, setStatus] = useState({ type: '', message: '' });
     const [loading, setLoading] = useState(false);
 
+    // Music profile state
+    const [musicProfile, setMusicProfile] = useState({
+        anthem: { title: '', artist: '' },
+        topArtists: [],
+        genre: ''
+    });
+    const [newArtist, setNewArtist] = useState('');
+
     // Load dữ liệu hiện tại của user
     useEffect(() => {
         if (user) {
@@ -112,6 +120,14 @@ const EditProfile = () => {
             });
             setSelectedInterests(user.interests || []);
             setProfileImages(user.images || []);
+            setMusicProfile({
+                anthem: {
+                    title: user.musicProfile?.anthem?.title || '',
+                    artist: user.musicProfile?.anthem?.artist || ''
+                },
+                topArtists: user.musicProfile?.topArtists || [],
+                genre: user.musicProfile?.genre || ''
+            });
         }
     }, [user]);
 
@@ -211,6 +227,11 @@ const EditProfile = () => {
                 lookingFor: profileDetails.lookingFor,
             },
             images: profileImages,
+            musicProfile: {
+                anthem: { title: musicProfile.anthem.title, artist: musicProfile.anthem.artist },
+                topArtists: musicProfile.topArtists,
+                genre: musicProfile.genre
+            },
         };
 
         try {
@@ -482,6 +503,112 @@ const EditProfile = () => {
                                     ))}
                                 </select>
                             </div>
+                        </div>
+                    </section>
+
+                    <div className="section-divider"></div>
+
+                    {/* ===== SECTION: ÂM NHẠC ===== */}
+                    <section className="profile-section music-section">
+                        <h3>🎵 Âm nhạc của bạn</h3>
+                        <p className="section-hint">Chia sẻ gu nhạc để tìm người cùng sở thích!</p>
+
+                        <div className="music-anthem-edit">
+                            <label className="music-label">🎶 Bài hát yêu thích (Anthem)</label>
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <input
+                                        type="text"
+                                        placeholder="Tên bài hát"
+                                        value={musicProfile.anthem.title}
+                                        onChange={e => setMusicProfile(prev => ({
+                                            ...prev, anthem: { ...prev.anthem, title: e.target.value }
+                                        }))}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <input
+                                        type="text"
+                                        placeholder="Ca sĩ / Nghệ sĩ"
+                                        value={musicProfile.anthem.artist}
+                                        onChange={e => setMusicProfile(prev => ({
+                                            ...prev, anthem: { ...prev.anthem, artist: e.target.value }
+                                        }))}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label>🎧 Thể loại yêu thích</label>
+                            <select
+                                value={musicProfile.genre}
+                                onChange={e => setMusicProfile(prev => ({ ...prev, genre: e.target.value }))}
+                            >
+                                <option value="">-- Chọn thể loại --</option>
+                                <option value="Pop">Pop</option>
+                                <option value="R&B">R&B</option>
+                                <option value="Hip-Hop">Hip-Hop / Rap</option>
+                                <option value="Rock">Rock</option>
+                                <option value="EDM">EDM / Electronic</option>
+                                <option value="Jazz">Jazz</option>
+                                <option value="Classical">Classical</option>
+                                <option value="K-Pop">K-Pop</option>
+                                <option value="V-Pop">V-Pop</option>
+                                <option value="Indie">Indie</option>
+                                <option value="Lo-fi">Lo-fi</option>
+                                <option value="Bolero">Bolero</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label>🎤 Nghệ sĩ yêu thích <span className="section-badge">{musicProfile.topArtists.length}/5</span></label>
+                            <div className="artist-input-row">
+                                <input
+                                    type="text"
+                                    placeholder="Nhập tên nghệ sĩ..."
+                                    value={newArtist}
+                                    onChange={e => setNewArtist(e.target.value)}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            if (newArtist.trim() && musicProfile.topArtists.length < 5) {
+                                                setMusicProfile(prev => ({
+                                                    ...prev, topArtists: [...prev.topArtists, newArtist.trim()]
+                                                }));
+                                                setNewArtist('');
+                                            }
+                                        }
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    className="add-artist-btn"
+                                    disabled={!newArtist.trim() || musicProfile.topArtists.length >= 5}
+                                    onClick={() => {
+                                        if (newArtist.trim() && musicProfile.topArtists.length < 5) {
+                                            setMusicProfile(prev => ({
+                                                ...prev, topArtists: [...prev.topArtists, newArtist.trim()]
+                                            }));
+                                            setNewArtist('');
+                                        }
+                                    }}
+                                >+</button>
+                            </div>
+                            {musicProfile.topArtists.length > 0 && (
+                                <div className="artist-chips-edit">
+                                    {musicProfile.topArtists.map((a, idx) => (
+                                        <span key={idx} className="artist-chip-edit">
+                                            🎤 {a}
+                                            <button type="button" onClick={() => {
+                                                setMusicProfile(prev => ({
+                                                    ...prev, topArtists: prev.topArtists.filter((_, i) => i !== idx)
+                                                }));
+                                            }}>✕</button>
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </section>
 

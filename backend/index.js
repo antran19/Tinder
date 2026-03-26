@@ -38,6 +38,10 @@ const {
   simpleRateLimit
 } = require('./middleware/errorHandler');
 
+// Import Security Middleware
+const { securityHeaders, requestId } = require('./middleware/security');
+const { sanitizeInput } = require('./middleware/sanitize');
+
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
@@ -50,26 +54,41 @@ const allowedOrigins = [
   process.env.SOCKET_CORS_ORIGIN
 ].filter((origin, index, self) => origin && self.indexOf(origin) === index); // Remove duplicates and undefined
 
+// ===== API DOCUMENTATION =====
+const { setupSwagger } = require('./config/swagger');
+setupSwagger(app);
+
+// ===== SECURITY MIDDLEWARE (Applied globally) =====
+app.use(securityHeaders);     // Security headers (OWASP)
+app.use(requestId);           // Unique request ID for audit trail
+
 // Basic middleware
 app.use(cors({
   origin: allowedOrigins,
   credentials: true
 }));
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '5mb' }));  // Reduced from 10mb
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+// Input sanitization (XSS, NoSQL injection prevention)
+app.use(sanitizeInput);
 
 // Serve uploaded files as static
 const path = require('path');
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  dotfiles: 'deny',        // Block hidden files
+  maxAge: '1d',             // Cache 1 day
+  index: false              // Disable directory listing
+}));
 
 // Request logging (chỉ trong development)
 if (process.env.NODE_ENV === 'development') {
   app.use(requestLogger);
 }
 
-// Simple rate limiting
-app.use(simpleRateLimit(1000, 15 * 60 * 1000)); // 1000 requests per 15 minutes
+// Global rate limiting
+app.use(simpleRateLimit(500, 15 * 60 * 1000)); // 500 requests per 15 minutes
 
 // ===== SOCKET.IO SETUP =====
 /**
@@ -426,30 +445,56 @@ app.get('/api/socket/info', (req, res) => {
 // API Routes
 console.log('🔗 Setting up API routes...');
 
-// Users routes - xử lý thông tin users và available users
-app.use('/api/users', usersRoutes);
+// Import auth middleware
+const { authenticateToken, authorizeAdmin } = require('./middleware/auth');
+const { advancedRateLimit, trackLoginAttempts, auditLog } = require('./middleware/security');
+const { validateUserId, validatePassword } = require('./middleware/sanitize');
 
-// Swipes routes - xử lý swipe actions và match logic
-app.use('/api/swipes', swipesRoutes);
+// Login attempt tracker
+const loginTracker = trackLoginAttempts({ maxAttempts: 5, lockoutMs: 15 * 60 * 1000 });
 
-// Auth routes - xử lý đăng nhập
-app.use('/api/auth', authRoutes);
+// ===== PUBLIC ROUTES (No auth required) =====
+// Auth routes — rate limited + brute force protection
+app.use('/api/auth', 
+    advancedRateLimit({ maxRequests: 10, windowMs: 60000, message: 'Quá nhiều lần thử. Đợi 1 phút.' }),
+    authRoutes
+);
 
-// Messages routes - xử lý tin nhắn chat
-app.use('/api/messages', messagesRoutes);
+// ===== PROTECTED ROUTES (Auth required) =====
+// Users routes
+app.use('/api/users', authenticateToken, usersRoutes);
 
-// Matches routes - xử lý matches và thống kê
-app.use('/api/matches', matchesRoutes);
-app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/premium', require('./routes/premium'));
-app.use('/api/payment', require('./routes/payment')); // QR Bank Payment
-app.use('/api/admin', require('./routes/admin'));      // Admin Dashboard
-app.use('/api/stories', require('./routes/stories'));  // Stories 24h
-app.use('/api/reports', require('./routes/reports'));  // Report & Block
-app.use('/api/verification', require('./routes/verification')); // Selfie Verification
-app.use('/api/upload', uploadRoutes); // Upload images (chat & profile)
+// Swipes routes 
+app.use('/api/swipes', authenticateToken, swipesRoutes);
 
-console.log('✅ API routes setup completed');
+// Messages routes
+app.use('/api/messages', authenticateToken, messagesRoutes);
+
+// Matches routes
+app.use('/api/matches', authenticateToken, matchesRoutes);
+app.use('/api/notifications', authenticateToken, require('./routes/notifications'));
+app.use('/api/premium', authenticateToken, require('./routes/premium'));
+app.use('/api/payment', authenticateToken, require('./routes/payment')); // QR Bank Payment
+app.use('/api/stories', authenticateToken, require('./routes/stories'));  // Stories 24h
+app.use('/api/reports', authenticateToken, require('./routes/reports'));  // Report & Block
+app.use('/api/verification', authenticateToken, require('./routes/verification')); // Selfie Verification
+app.use('/api/icebreakers', authenticateToken, require('./routes/icebreakers')); // Icebreaker Suggestions
+app.use('/api/boost', authenticateToken, require('./routes/boost')); // Profile Boost
+app.use('/api/gifts', authenticateToken, require('./routes/gifts')); // Virtual Gifts
+app.use('/api/smart-match', authenticateToken, require('./routes/smart-match')); // Smart Matching AI
+app.use('/api/insights', authenticateToken, require('./routes/insights')); // User Insights
+app.use('/api/upload', authenticateToken, 
+    advancedRateLimit({ maxRequests: 20, windowMs: 60000, message: 'Upload quá nhanh. Đợi 1 phút.' }),
+    uploadRoutes
+); // Upload images
+
+// ===== ADMIN ROUTES (Admin role required) =====
+app.use('/api/admin', authenticateToken, authorizeAdmin, 
+    auditLog('ADMIN_ACTION'),
+    require('./routes/admin')
+);
+
+console.log('✅ API routes setup completed (with auth middleware)');
 
 // 404 handler cho routes không tồn tại
 app.use(notFoundHandler);

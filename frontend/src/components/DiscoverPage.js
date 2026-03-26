@@ -37,6 +37,8 @@ const DiscoverPage = () => {
         maxDistance: user?.preferences?.maxDistance || 50,
     });
     const [likedUsers, setLikedUsers] = useState(new Set());
+    const [aiSuggestions, setAiSuggestions] = useState([]);
+    const [aiLoading, setAiLoading] = useState(false);
 
     useEffect(() => {
         loadUsers();
@@ -107,6 +109,9 @@ const DiscoverPage = () => {
                 const bCommon = (b.interests || []).filter(i => myInterests.includes(i)).length;
                 return bCommon - aCommon;
             }).slice(0, 10);
+        } else if (activeTab === 'aiMatch') {
+            // Load from smart-match API
+            if (aiSuggestions.length === 0 && !aiLoading) loadAiSuggestions();
         }
 
         setFilteredUsers(result);
@@ -148,11 +153,25 @@ const DiscoverPage = () => {
         return myInterests.filter(i => theirInterests.includes(i));
     };
 
+    const loadAiSuggestions = async () => {
+        try {
+            setAiLoading(true);
+            const res = await fetch(`${API_BASE_URL}/api/smart-match/${user?.userId}?limit=10`);
+            const data = await res.json();
+            if (data.success) setAiSuggestions(data.data.suggestions);
+        } catch (e) {
+            console.error('AI match error:', e);
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
     const tabs = [
         { id: 'all', label: 'Tất cả', icon: '🌍' },
         { id: 'nearby', label: 'Gần bạn', icon: '📍' },
         { id: 'online', label: 'Đang online', icon: '🟢' },
         { id: 'topPicks', label: 'Top Picks', icon: '⭐' },
+        { id: 'aiMatch', label: 'AI Match', icon: '🧠' },
     ];
 
     if (loading) {
@@ -295,8 +314,69 @@ const DiscoverPage = () => {
                 </div>
             )}
 
-            {/* User Grid */}
-            {filteredUsers.length === 0 ? (
+            {/* AI Match Tab */}
+            {activeTab === 'aiMatch' ? (
+                <div className="ai-match-section">
+                    <div className="ai-header">
+                        <h3>🧠 Đề xuất AI</h3>
+                        <p>Thuật toán phân tích 7 yếu tố để tìm người phù hợp nhất</p>
+                        <button className="ai-refresh-btn" onClick={loadAiSuggestions} disabled={aiLoading}>
+                            {aiLoading ? '⏳ Đang phân tích...' : '🔄 Phân tích lại'}
+                        </button>
+                    </div>
+                    {aiLoading ? (
+                        <div className="discover-loading"><div className="discover-spinner" /><p>AI đang phân tích...</p></div>
+                    ) : aiSuggestions.length === 0 ? (
+                        <div className="discover-empty"><div className="empty-icon">🤖</div><h3>Chưa có đề xuất</h3><p>Hãy hoàn thiện hồ sơ để AI phân tích tốt hơn!</p></div>
+                    ) : (
+                        <div className="discover-grid">
+                            {aiSuggestions.map((s) => {
+                                const u = s.user;
+                                const age = calculateAge(u.birthday);
+                                const hasImage = u.images && u.images.length > 0;
+                                const isLiked = likedUsers.has(u.userId);
+                                const scoreColor = s.matchScore >= 70 ? '#4ade80' : s.matchScore >= 50 ? '#f59e0b' : '#64748b';
+
+                                return (
+                                    <div key={u.userId} className={`discover-card ${isLiked ? 'liked' : ''}`} onClick={() => setSelectedUser(u)}>
+                                        <div className="discover-card-image">
+                                            {hasImage ? (
+                                                <img src={getImageUrl(u.images[0])} alt={u.firstName} />
+                                            ) : (
+                                                <div className="discover-card-avatar">{(u.firstName || '?').charAt(0).toUpperCase()}</div>
+                                            )}
+                                            {u.isOnline && <div className="discover-online-badge">●</div>}
+                                            {u.isBoosted && <div className="discover-boost-badge">⚡</div>}
+                                            <div className="ai-score-badge" style={{background: scoreColor}}>
+                                                {s.matchScore}%
+                                            </div>
+                                            <div className="discover-card-gradient"></div>
+                                            <div className="discover-card-info">
+                                                <h3>{u.firstName || u.userId}{age ? `, ${age}` : ''}</h3>
+                                                <span className="ai-compat-label">{s.compatibility}</span>
+                                            </div>
+                                        </div>
+                                        <div className="discover-card-body">
+                                            <div className="ai-breakdown">
+                                                <span title="Sở thích">🎯 {s.breakdown.interests?.score || 0}</span>
+                                                <span title="Khoảng cách">📍 {s.breakdown.distance?.score || 0}</span>
+                                                <span title="Tuổi">🎂 {s.breakdown.age?.score || 0}</span>
+                                                <span title="Profile">📝 {s.breakdown.profileComplete?.score || 0}</span>
+                                            </div>
+                                            {!isLiked && (
+                                                <div className="discover-card-actions">
+                                                    <button className="discover-like-btn" onClick={(e) => { e.stopPropagation(); handleLike(u); }}>💚</button>
+                                                    <button className="discover-superlike-btn" onClick={(e) => { e.stopPropagation(); handleSuperLike(u); }}>⭐</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            ) : filteredUsers.length === 0 ? (
                 <div className="discover-empty">
                     <div className="empty-icon">🔍</div>
                     <h3>Không tìm thấy ai</h3>

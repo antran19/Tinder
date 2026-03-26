@@ -322,3 +322,84 @@
 @media (min-width: 768px) {
     .tinder-name-row h2 { font-size: 1.8rem; }
 }
+
+/* ===== MUSIC / ANTHEM ===== */
+.tinder-anthem {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 6px 10px;
+    margin-top: 6px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(30, 215, 96, 0.2), rgba(30, 215, 96, 0.05));
+    border: 1px solid rgba(30, 215, 96, 0.2);
+    backdrop-filter: blur(4px);
+}
+
+.anthem-icon {
+    font-size: 1.1rem;
+    animation: musicBounce 1.5s ease-in-out infinite;
+}
+
+@keyframes musicBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+}
+
+.anthem-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.anthem-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #1ed760;
+}
+
+.anthem-artist {
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.6);
+}
+
+/* Music in expanded details */
+.detail-music {
+    margin-bottom: 1rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.detail-music h4 {
+    margin: 0 0 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.music-genre-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1ed760, #1DB954);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.music-artists {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+}
+
+.artist-chip {
+    padding: 3px 8px;
+    border-radius: 8px;
+    background: rgba(30, 215, 96, 0.1);
+    border: 1px solid rgba(30, 215, 96, 0.15);
+    color: #1ed760;
+    font-size: 0.72rem;
+    font-weight: 600;
+}

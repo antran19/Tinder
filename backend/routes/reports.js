@@ -86,14 +86,58 @@ router.post('/unblock', async (req, res) => {
 
 /**
  * GET /api/reports/blocked/:userId
- * Lấy danh sách users đã chặn
+ * Lấy danh sách users đã chặn (kèm thông tin chi tiết)
  */
 router.get('/blocked/:userId', async (req, res) => {
     try {
         const user = await User.findOne({ userId: req.params.userId }).select('blockedUsers');
-        res.json({ success: true, data: { blockedUsers: user?.blockedUsers || [] } });
+        const blockedIds = user?.blockedUsers || [];
+        
+        if (blockedIds.length === 0) {
+            return res.json({ success: true, data: { blockedUsers: [] } });
+        }
+
+        // Lấy thông tin chi tiết các user đã chặn
+        const blockedDetails = await User.find({ userId: { $in: blockedIds } })
+            .select('userId firstName images isOnline');
+        
+        res.json({ success: true, data: { blockedUsers: blockedDetails } });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Lỗi lấy danh sách chặn' });
+    }
+});
+
+/**
+ * GET /api/reports/history/:userId
+ * Lấy lịch sử báo cáo của user (những report user đã gửi)
+ */
+router.get('/history/:userId', async (req, res) => {
+    try {
+        const reports = await Report.find({ reporterId: req.params.userId })
+            .sort({ createdAt: -1 })
+            .limit(50);
+        
+        // Enrich with reported user info
+        const reportedIds = [...new Set(reports.map(r => r.reportedUserId))];
+        const users = await User.find({ userId: { $in: reportedIds } })
+            .select('userId firstName images');
+        const userMap = {};
+        users.forEach(u => { userMap[u.userId] = u; });
+
+        const enriched = reports.map(r => ({
+            _id: r._id,
+            reportedUserId: r.reportedUserId,
+            reportedUser: userMap[r.reportedUserId] || { userId: r.reportedUserId, firstName: r.reportedUserId },
+            reason: r.reason,
+            description: r.description || '',
+            status: r.status || 'pending',
+            createdAt: r.createdAt
+        }));
+
+        res.json({ success: true, data: { reports: enriched } });
+    } catch (error) {
+        console.error('Report history error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi lấy lịch sử' });
     }
 });
 

@@ -22,6 +22,8 @@ const ChatView = ({ match, onClose }) => {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
+    const [icebreakers, setIcebreakers] = useState([]);
+    const [icebreakerLoading, setIcebreakerLoading] = useState(false);
     const messagesEndRef = useRef(null);
 
     const matchId = match._id || match.matchId;
@@ -52,6 +54,9 @@ const ChatView = ({ match, onClose }) => {
     const [uploadingImage, setUploadingImage] = useState(false);
     const [viewImage, setViewImage] = useState(null);
     const fileInputRef = useRef(null);
+    const [showGiftPicker, setShowGiftPicker] = useState(false);
+    const [giftCatalog, setGiftCatalog] = useState([]);
+    const [flyingGift, setFlyingGift] = useState(null);
 
     // 1. Tự động cuộn xuống cuối khi có tin nhắn mới
     const scrollToBottom = () => {
@@ -76,8 +81,31 @@ const ChatView = ({ match, onClose }) => {
             }
         };
 
-        if (currentUserId) initChat();
+        if (currentUserId) {
+            initChat();
+            loadIcebreakers();
+        }
     }, [matchId, currentUserId]);
+
+    // Load icebreakers
+    const loadIcebreakers = async () => {
+        try {
+            setIcebreakerLoading(true);
+            const res = await fetch(`${API_BASE_URL}/api/icebreakers/${currentUserId}/${otherUserId}`);
+            const data = await res.json();
+            if (data.success) {
+                setIcebreakers(data.data.suggestions);
+            }
+        } catch (err) {
+            console.error('Icebreaker error:', err);
+        } finally {
+            setIcebreakerLoading(false);
+        }
+    };
+
+    const handleIcebreakerClick = (message) => {
+        setNewMessage(message);
+    };
 
     // 2b. Join chat room whenever socket connects/reconnects
     useEffect(() => {
@@ -172,6 +200,49 @@ const ChatView = ({ match, onClose }) => {
             };
         }
     }, [socket, matchId, currentUserId, otherUserId]);
+
+    // Load gift catalog
+    useEffect(() => {
+        fetch(`${API_BASE_URL}/api/gifts/catalog`)
+            .then(r => r.json())
+            .then(d => { if(d.success) setGiftCatalog(d.data.gifts); })
+            .catch(() => {});
+    }, []);
+
+    // Listen for gift events
+    useEffect(() => {
+        if (!socket) return;
+        const handleGift = (data) => {
+            if (data.matchId?.toString() === matchId?.toString()) {
+                setFlyingGift(data.gift);
+                setTimeout(() => setFlyingGift(null), 3000);
+            }
+        };
+        socket.on('receive-gift', handleGift);
+        return () => socket.off('receive-gift', handleGift);
+    }, [socket, matchId]);
+
+    const handleSendGift = async (gift) => {
+        try {
+            await fetch(`${API_BASE_URL}/api/gifts/send`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ senderId: currentUserId, receiverId: otherUserId, matchId, giftId: gift.id })
+            });
+            setShowGiftPicker(false);
+            setFlyingGift(gift);
+            setTimeout(() => setFlyingGift(null), 3000);
+            if (socket) {
+                socket.emit('send-message', {
+                    matchId, senderId: currentUserId,
+                    content: `${gift.emoji} Đã gửi ${gift.name}`,
+                    messageType: 'gift'
+                });
+            }
+        } catch (e) {
+            console.error('Gift send error:', e);
+        }
+    };
 
     // 4. Gửi tin nhắn và emit typing
     const handleInputChange = (e) => {
@@ -307,7 +378,30 @@ const ChatView = ({ match, onClose }) => {
                     {loading ? (
                         <div className="chat-loading">Đang tải tin nhắn...</div>
                     ) : messages.length === 0 ? (
-                        <div className="no-messages-hint">Hãy gửi lời chào tới {otherUser.firstName || otherUser.userId}! 👋</div>
+                        <div className="icebreaker-section">
+                            <div className="no-messages-hint">Hãy gửi lời chào tới {otherUser.firstName || otherUser.userId}! 👋</div>
+                            {icebreakers.length > 0 && (
+                                <div className="icebreaker-container">
+                                    <p className="icebreaker-title">✨ Gợi ý câu mở đầu:</p>
+                                    <div className="icebreaker-chips">
+                                        {icebreakers.map((ib, idx) => (
+                                            <button
+                                                key={idx}
+                                                className={`icebreaker-chip ${ib.category}`}
+                                                onClick={() => handleIcebreakerClick(ib.message)}
+                                                title={ib.label}
+                                            >
+                                                <span className="ib-icon">{ib.icon}</span>
+                                                <span className="ib-text">{ib.message}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <button className="icebreaker-refresh" onClick={loadIcebreakers} disabled={icebreakerLoading}>
+                                        🔄 Đổi gợi ý khác
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     ) : (
                         messages.map((msg, index) => {
                             const isMe = msg.senderId?.toString().toLowerCase() === currentUserId?.toString().toLowerCase();
@@ -383,6 +477,9 @@ const ChatView = ({ match, onClose }) => {
                     <button type="button" className="attachment-btn" onClick={() => fileInputRef.current?.click()} title="Gửi ảnh">
                         📷
                     </button>
+                    <button type="button" className="gift-btn" onClick={() => setShowGiftPicker(!showGiftPicker)} title="Gửi quà">
+                        🎁
+                    </button>
                     <input
                         type="text"
                         placeholder="Nhập tin nhắn..."
@@ -397,6 +494,31 @@ const ChatView = ({ match, onClose }) => {
                     </button>
                 </form>
             </div>
+
+            {/* Gift Picker */}
+            {showGiftPicker && (
+                <div className="gift-picker-overlay" onClick={() => setShowGiftPicker(false)}>
+                    <div className="gift-picker" onClick={e => e.stopPropagation()}>
+                        <h4>🎁 Chọn quà tặng</h4>
+                        <div className="gift-grid">
+                            {giftCatalog.map(g => (
+                                <button key={g.id} className="gift-item" onClick={() => handleSendGift(g)}>
+                                    <span className="gift-emoji">{g.emoji}</span>
+                                    <span className="gift-name">{g.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Flying Gift Animation */}
+            {flyingGift && (
+                <div className="flying-gift">
+                    <span className="flying-emoji">{flyingGift.emoji}</span>
+                    <span className="flying-label">{flyingGift.name}</span>
+                </div>
+            )}
 
             {/* Image Viewer Modal */}
             {viewImage && (

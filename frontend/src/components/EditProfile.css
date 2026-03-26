@@ -503,3 +503,87 @@
   color: var(--text-muted);
   opacity: 0.7;
 }
+
+/* ===== MUSIC SECTION ===== */
+.music-section h3 {
+  color: #1ed760 !important;
+}
+
+.music-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.music-anthem-edit {
+  margin-bottom: 1rem;
+}
+
+.artist-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.artist-input-row input {
+  flex: 1;
+}
+
+.add-artist-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1.5px solid #1ed760;
+  background: rgba(30, 215, 96, 0.1);
+  color: #1ed760;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.add-artist-btn:hover:not(:disabled) {
+  background: #1ed760;
+  color: white;
+}
+
+.add-artist-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.artist-chips-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 0.5rem;
+}
+
+.artist-chip-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: rgba(30, 215, 96, 0.1);
+  border: 1px solid rgba(30, 215, 96, 0.2);
+  color: #1ed760;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.artist-chip-edit button {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.artist-chip-edit button:hover {
+  color: #ff6b6b;
+}

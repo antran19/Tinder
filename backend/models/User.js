@@ -11,6 +11,21 @@ const userSchema = new mongoose.Schema({
     type: String,
     select: false
   },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  facebookId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  email: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   phoneNumber: {
     type: String,
     unique: true,
@@ -197,6 +212,31 @@ const userSchema = new mongoose.Schema({
     submittedAt: { type: Date },
     reviewedAt: { type: Date },
     reviewedBy: { type: String }
+  },
+  // Music Profile (Spotify-style)
+  musicProfile: {
+    anthem: {
+      title: { type: String, default: '' },
+      artist: { type: String, default: '' }
+    },
+    topArtists: [{ type: String }],
+    genre: { type: String, default: '' }
+  },
+  // Boost
+  boost: {
+    isActive: { type: Boolean, default: false },
+    startedAt: { type: Date, default: null },
+    endsAt: { type: Date, default: null },
+    totalBoosts: { type: Number, default: 0 }
+  },
+  // Token version for logout-all-devices
+  tokenVersion: {
+    type: Number,
+    default: 0
+  },
+  lastActive: {
+    type: Date,
+    default: Date.now
   },
   createdAt: {
     type: Date,

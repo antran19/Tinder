@@ -11,16 +11,24 @@ const { User, Swipe, Match, Notification } = require('../models');
 const { emitMatchNotification } = require('../utils/socketUtils');
 
 /**
- * POST /api/swipes
- * Tạo swipe action mới (like hoặc pass)
- * 
- * Logic:
- * 1. Lưu swipe action vào database
- * 2. Nếu là "like", check xem có mutual like không
- * 3. Nếu có mutual like, tạo match
- * 4. Trả về kết quả (có match hay không)
- * 
- * Requirements: 2.1, 2.2, 2.3, 3.1, 3.3
+ * @swagger
+ * /api/swipes:
+ *   post:
+ *     tags: [Swipes]
+ *     summary: Tạo swipe action mới
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Swipe'
+ *     responses:
+ *       200:
+ *         description: Swipe thành công (có thể kèm match)
+ *       400:
+ *         description: Dữ liệu không hợp lệ
  */
 router.post('/', async (req, res) => {
   try {
@@ -366,6 +374,112 @@ router.get('/stats/:userId', async (req, res) => {
       message: 'Lỗi server khi lấy thống kê swipes',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  }
+});
+/**
+ * POST /api/swipes/rewind
+ * Hoàn tác swipe cuối cùng (Rewind/Undo)
+ * 
+ * - Free: 1 rewind/ngày
+ * - Premium: 5 rewind/ngày
+ * - Gold: Không giới hạn
+ */
+router.post('/rewind', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'Thiếu userId' });
+    }
+
+    // Check subscription for rewind limits
+    const user = await User.findOne({ userId });
+    if (!user) return res.status(404).json({ success: false, message: 'User không tồn tại' });
+
+    const tier = user.subscription?.tier || 'free';
+    const maxRewinds = tier === 'gold' ? 999 : tier === 'premium' ? 5 : 1;
+
+    // Count rewinds today
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    // Check daily limit via simple counting (store in user doc)
+    const rewindCount = user.rewindCountToday || 0;
+    const lastRewindDate = user.lastRewindDate ? new Date(user.lastRewindDate) : null;
+    const isToday = lastRewindDate && lastRewindDate >= todayStart;
+
+    if (isToday && rewindCount >= maxRewinds) {
+      return res.status(429).json({
+        success: false,
+        message: tier === 'free' 
+          ? 'Bạn đã dùng hết lượt hoàn tác hôm nay. Nâng cấp Premium để có thêm!' 
+          : `Bạn đã dùng hết ${maxRewinds} lượt hoàn tác hôm nay.`,
+        code: 'REWIND_LIMIT'
+      });
+    }
+
+    // Get last swipe
+    const lastSwipe = await Swipe.findOne({ fromUserId: userId })
+      .sort({ createdAt: -1 });
+
+    if (!lastSwipe) {
+      return res.status(404).json({ success: false, message: 'Không có swipe nào để hoàn tác.' });
+    }
+
+    // Check if swipe is too old (> 5 minutes)
+    const swipeAge = Date.now() - new Date(lastSwipe.createdAt).getTime();
+    if (swipeAge > 5 * 60 * 1000) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Chỉ có thể hoàn tác swipe trong vòng 5 phút.' 
+      });
+    }
+
+    const rewoundUserId = lastSwipe.toUserId;
+    const swipeType = lastSwipe.type;
+
+    // If this swipe created a match, delete the match too
+    if (swipeType === 'like' || swipeType === 'super_like') {
+      await Match.deleteMany({
+        $or: [
+          { user1Id: userId, user2Id: rewoundUserId },
+          { user1Id: rewoundUserId, user2Id: userId }
+        ]
+      });
+    }
+
+    // If was super_like, refund the credit
+    if (swipeType === 'super_like') {
+      await User.updateOne({ userId }, { $inc: { 'credits.superLikes': 1 } });
+    }
+
+    // Delete the swipe
+    await Swipe.findByIdAndDelete(lastSwipe._id);
+
+    // Update rewind count
+    await User.updateOne({ userId }, {
+      rewindCountToday: isToday ? rewindCount + 1 : 1,
+      lastRewindDate: new Date()
+    });
+
+    // Get the rewound user's profile to put back on stack
+    const rewoundUser = await User.findOne({ userId: rewoundUserId })
+      .select('userId firstName birthday gender bio images interests profileDetails location isVerified isOnline');
+
+    console.log(`⏪ Rewind: ${userId} undid ${swipeType} on ${rewoundUserId}`);
+
+    res.json({
+      success: true,
+      message: `Đã hoàn tác ${swipeType === 'like' ? 'thích' : swipeType === 'super_like' ? 'Super Like' : 'bỏ qua'}!`,
+      data: {
+        rewoundUser,
+        swipeType,
+        remainingRewinds: maxRewinds - (isToday ? rewindCount + 1 : 1)
+      }
+    });
+
+  } catch (error) {
+    console.error('Rewind error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi hoàn tác swipe' });
   }
 });
 

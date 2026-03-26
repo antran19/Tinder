@@ -290,6 +290,17 @@ const SwipeCard = ({ user, onSwipe, loading = false, disabled = false, isBehind 
             </p>
           )}
 
+          {/* Music Anthem */}
+          {user.musicProfile?.anthem?.title && (
+            <div className="tinder-anthem">
+              <span className="anthem-icon">🎵</span>
+              <div className="anthem-info">
+                <span className="anthem-title">{user.musicProfile.anthem.title}</span>
+                <span className="anthem-artist">{user.musicProfile.anthem.artist}</span>
+              </div>
+            </div>
+          )}
+
           <div className="tinder-expand-hint">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="white" style={{transform: showDetails ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s'}}>
               <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
@@ -304,6 +315,24 @@ const SwipeCard = ({ user, onSwipe, loading = false, disabled = false, isBehind 
           {user.bio && (
             <div className="detail-bio"><p>{user.bio}</p></div>
           )}
+
+          {/* Music Section */}
+          {(user.musicProfile?.topArtists?.length > 0 || user.musicProfile?.genre) && (
+            <div className="detail-music">
+              <h4>🎵 Âm nhạc</h4>
+              {user.musicProfile.genre && (
+                <span className="music-genre-tag">{user.musicProfile.genre}</span>
+              )}
+              {user.musicProfile.topArtists?.length > 0 && (
+                <div className="music-artists">
+                  {user.musicProfile.topArtists.map((artist, idx) => (
+                    <span key={idx} className="artist-chip">🎤 {artist}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {interests.length > 0 && (
             <div className="detail-interests">
               <h4>Sở thích</h4>

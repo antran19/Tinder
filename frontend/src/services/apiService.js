@@ -58,7 +58,22 @@ api.interceptors.response.use(
     console.error('API Response Error:', error.response?.data || error.message);
 
     // Handle common error scenarios
-    if (error.response?.status === 404) {
+    if (error.response?.status === 401) {
+      const code = error.response?.data?.code;
+      // Token expired or invalid — auto logout
+      if (code === 'TOKEN_EXPIRED' || code === 'INVALID_TOKEN') {
+        console.warn('🔐 Token expired/invalid — auto logout');
+        localStorage.removeItem('dating_token');
+        localStorage.removeItem('dating_user');
+        window.location.href = '/login';
+        return Promise.reject(new Error('Phiên đăng nhập hết hạn'));
+      }
+      throw new Error(backendMessage || 'Yêu cầu đăng nhập');
+    } else if (error.response?.status === 403) {
+      throw new Error(backendMessage || 'Bạn không có quyền truy cập.');
+    } else if (error.response?.status === 429) {
+      throw new Error(backendMessage || 'Quá nhiều yêu cầu. Vui lòng chờ.');
+    } else if (error.response?.status === 404) {
       throw new Error(backendMessage || 'Resource not found');
     } else if (error.response?.status === 500) {
       throw new Error(backendMessage || 'Server error. Please try again later.');
@@ -66,8 +81,6 @@ api.interceptors.response.use(
       throw new Error(backendMessage || 'Conflict error');
     } else if (error.response?.status === 400) {
       throw new Error(backendMessage || 'Invalid request');
-    } else if (error.response?.status === 401) {
-      throw new Error(backendMessage || 'Unauthorized');
     } else if (error.code === 'ECONNREFUSED') {
       throw new Error('Cannot connect to server. Please check if the backend is running.');
     } else if (error.code === 'ECONNABORTED') {
@@ -125,6 +138,26 @@ export const apiService = {
       return response.data;
     } catch (error) {
       console.error('Lỗi API Login:', error);
+      throw error;
+    }
+  },
+
+  async loginWithGoogle(credential) {
+    try {
+      const response = await api.post('/auth/google', { credential });
+      return response.data;
+    } catch (error) {
+      console.error('Lỗi API Google Login:', error);
+      throw error;
+    }
+  },
+
+  async loginWithFacebook(accessToken) {
+    try {
+      const response = await api.post('/auth/facebook', { accessToken });
+      return response.data;
+    } catch (error) {
+      console.error('Lỗi API Facebook Login:', error);
       throw error;
     }
   },
